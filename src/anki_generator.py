@@ -13,8 +13,8 @@ import io
 import csv
 
 # Ваши API ключи для Google Custom Search
-API_KEY = 'AIzaSyBP_IpnQEnqeUvZVmroweI0vgK2H8xA57s'
-CX = '32bc61fd2db794fac'
+API_KEY = 'xxx'
+CX = 'xxx'
 
 # ----------------------- ЧТЕНИЕ ДАННЫХ ИЗ CSV ----------------------------
 def load_cards_from_csv(csv_file_path='cards.csv'):
