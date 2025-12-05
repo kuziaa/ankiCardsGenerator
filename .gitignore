@@ -2,3 +2,4 @@
 .git/
 vocabulary_typein.apkg
 config.properties
+__pycache__/

@@ -212,13 +212,13 @@ for word, translation, example, incorrectEnVariant1, incorrectEnVariant2, incorr
         )
     )
 
-    # Перемешиваем список всех заметок
-    random.shuffle(all_notes)
-    print(f"Перемешано {len(all_notes)} заметок")
+# Перемешиваем список всех заметок
+random.shuffle(all_notes)
+print(f"Перемешано {len(all_notes)} заметок")
 
-    # Добавляем все перемешанные заметки в колоду
-    for note in all_notes:
-        deck.add_note(note)
+# Добавляем все перемешанные заметки в колоду
+for note in all_notes:
+    deck.add_note(note)
 
 # ----------------------- PACKAGE ----------------------------
 

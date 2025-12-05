@@ -18,6 +18,7 @@ model = genanki.Model(
                     {{Image}}
                 </div>
                 <h2>{{Russian}}</h2>
+                {{Audio}}<br><br><br>
                 {{type:English}}
             """,
             "afmt": """
@@ -25,7 +26,7 @@ model = genanki.Model(
                     {{Image}}
                 </div>
                 <h2>{{Russian}}</h2>
-                {{Audio}}<br><br><br>
+                
                 {{type:English}}
                 
                 <hr id=answer>
