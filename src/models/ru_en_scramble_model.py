@@ -22,15 +22,12 @@ model = genanki.Model(
                     <div class="question-text">{{Russian}}</div>
                     {{Audio}}<br>
                     
-                    <!-- Контейнер для поля ввода и кнопки перемешивания -->
+                    <!-- Контейнер для поля ввода -->
                     <div class="input-container">
                         <!-- Поле ввода для ответа -->
                         <div id="answer-field">
                             {{type:English}}
                         </div>
-                        
-                        <!-- Кнопка для перестановки букв -->
-                        <button id="shuffle-btn" class="shuffle-button">Перемешать буквы</button>
                     </div>
                     
                     <!-- Контейнер для перемешанных букв английского слова -->
@@ -48,6 +45,39 @@ model = genanki.Model(
                         [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
                     }
                     return newArray;
+                }
+                
+                // Функция для получения следующей ожидаемой буквы на основе текущего ввода
+                function getNextExpectedChar() {
+                    const input = document.querySelector('#answer-field input');
+                    const correctWord = "{{English}}";
+                    if (!input) return null;
+                    
+                    const currentInput = input.value;
+                    return correctWord[currentInput.length];
+                }
+                
+                // Функция для проверки, является ли буква следующей правильной
+                function isNextCorrectChar(char) {
+                    const expectedChar = getNextExpectedChar();
+                    return char === expectedChar;
+                }
+                
+                // Функция для проверки, была ли буква уже использована
+                function isCharUsed(char) {
+                    const input = document.querySelector('#answer-field input');
+                    if (!input) return false;
+                    
+                    const currentInput = input.value;
+                    const correctWord = "{{English}}";
+                    
+                    // Считаем, сколько раз эта буква уже встречается в введенном тексте
+                    const usedCount = (currentInput.match(new RegExp(char, 'g')) || []).length;
+                    
+                    // Считаем, сколько раз эта буква должна встречаться в правильном слове
+                    const requiredCount = (correctWord.match(new RegExp(char, 'g')) || []).length;
+                    
+                    return usedCount >= requiredCount;
                 }
                 
                 // Функция для создания кнопок с буквами
@@ -92,35 +122,24 @@ model = genanki.Model(
                         button.addEventListener('click', function() {
                             const input = document.querySelector('#answer-field input');
                             if (input) {
-                                // Добавляем символ к текущему значению
-                                // Для пробела добавляем обычный пробел, для остальных - символ как есть
-                                input.value += (char === ' ') ? ' ' : char;
-                                // Активируем событие для Anki
-                                input.dispatchEvent(new Event('input', { bubbles: true }));
-                                
-                                // Визуальная обратная связь - кнопка становится неактивной
-                                this.style.backgroundColor = '#888';
-                                this.style.cursor = 'default';
-                                this.disabled = true;
+                                // Проверяем, является ли нажатая буква следующей ожидаемой
+                                // и не была ли она уже использована
+                                if (isNextCorrectChar(char) && !isCharUsed(char)) {
+                                    // Добавляем символ к текущему значению
+                                    // Для пробела добавляем обычный пробел, для остальных - символ как есть
+                                    input.value += (char === ' ') ? ' ' : char;
+                                    // Активируем событие для Anki
+                                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                                    
+                                    // Визуальная обратная связь - кнопка становится неактивной
+                                    this.style.backgroundColor = '#888';
+                                    this.style.cursor = 'default';
+                                    this.disabled = true;
+                                } 
                             }
                         });
                         
                         container.appendChild(button);
-                    });
-                }
-                
-                // Функция для сброса кнопок (при перестановке)
-                function resetLetterButtons() {
-                    const buttons = document.getElementsByClassName('letter-btn');
-                    Array.from(buttons).forEach(btn => {
-                        // Возвращаем исходный цвет в зависимости от типа кнопки
-                        if (btn.classList.contains('space-btn')) {
-                            btn.style.backgroundColor = '#FF9800';
-                        } else {
-                            btn.style.backgroundColor = '#4CAF50';
-                        }
-                        btn.style.cursor = 'pointer';
-                        btn.disabled = false;
                     });
                 }
                 
@@ -132,31 +151,6 @@ model = genanki.Model(
                 } else {
                     createLetterButtons();
                 }
-                
-                // Обработчик для кнопки перестановки
-                document.addEventListener('click', function(e) {
-                    if (e.target.id === 'shuffle-btn') {
-                        createLetterButtons();
-                        
-                        // Сбрасываем поле ввода
-                        const input = document.querySelector('#answer-field input');
-                        if (input) {
-                            input.value = '';
-                            input.dispatchEvent(new Event('input', { bubbles: true }));
-                        }
-                    }
-                });
-                
-                // Обработчик для очистки поля ввода (двойной клик)
-                document.addEventListener('dblclick', function(e) {
-                    if (e.target.matches('#answer-field input')) {
-                        e.target.value = '';
-                        e.target.dispatchEvent(new Event('input', { bubbles: true }));
-                        
-                        // Сбрасываем кнопки букв
-                        resetLetterButtons();
-                    }
-                });
                 </script>
             """,
             "afmt": """
@@ -203,19 +197,16 @@ model = genanki.Model(
             text-align: center;
         }
         
-        /* Контейнер для поля ввода и кнопки */
+        /* Контейнер для поля ввода */
         .input-container {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 15px;
             margin: 20px 0;
-            flex-wrap: wrap;
         }
         
         /* Стили для поля ввода */
         #answer-field {
-            flex: 1;
             max-width: 400px;
             text-align: center;
         }
@@ -228,25 +219,6 @@ model = genanki.Model(
             border: 2px solid #4CAF50;
             border-radius: 5px;
             box-sizing: border-box;
-        }
-        
-        /* Стили для кнопки перемешивания */
-        .shuffle-button {
-            background-color: #2196F3;
-            color: black;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            padding: 12px 20px;
-            font-size: 16px;
-            white-space: nowrap;
-            transition: all 0.3s;
-            height: fit-content;
-        }
-        
-        .shuffle-button:hover {
-            transform: scale(1.05);
         }
         
         /* Контейнер для букв */
