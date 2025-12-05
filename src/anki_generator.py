@@ -27,7 +27,7 @@ if not API_KEY or not CX:
     print("Скачивание изображений будет пропущено.")
 
 # ----------------------- ЧТЕНИЕ ДАННЫХ ИЗ CSV ----------------------------
-def load_cards_from_csv(csv_file_path='cards.csv'):
+def load_cards_from_csv(csv_file_path='src/resources/cards.csv'):
     cards = []
     try:
         with open(csv_file_path, 'r', encoding='utf-8') as csvfile:

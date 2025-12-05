@@ -63,23 +63,6 @@ model = genanki.Model(
                     return char === expectedChar;
                 }
                 
-                // Функция для проверки, была ли буква уже использована
-                function isCharUsed(char) {
-                    const input = document.querySelector('#answer-field input');
-                    if (!input) return false;
-                    
-                    const currentInput = input.value;
-                    const correctWord = "{{English}}";
-                    
-                    // Считаем, сколько раз эта буква уже встречается в введенном тексте
-                    const usedCount = (currentInput.match(new RegExp(char, 'g')) || []).length;
-                    
-                    // Считаем, сколько раз эта буква должна встречаться в правильном слове
-                    const requiredCount = (correctWord.match(new RegExp(char, 'g')) || []).length;
-                    
-                    return usedCount >= requiredCount;
-                }
-                
                 // Функция для обновления состояния кнопок при вводе с клавиатуры
                 function updateButtonStates() {
                     const input = document.querySelector('#answer-field input');
@@ -87,26 +70,31 @@ model = genanki.Model(
                     if (!input) return;
                     
                     const currentInput = input.value;
-                    
-                    // Для каждой буквы в правильном слове проверяем, была ли она уже введена
                     const buttons = document.querySelectorAll('.letter-btn');
+                    
+                    // Сначала сбросим все кнопки до активного состояния
                     buttons.forEach(button => {
-                        const buttonChar = button.textContent === '␣' ? ' ' : button.textContent;
-                        
-                        // Определяем, была ли эта буква уже использована
-                        if (isCharUsed(buttonChar)) {
-                            button.style.backgroundColor = '#888';
-                            button.disabled = true;
+                        if (button.classList.contains('space-btn')) {
+                            button.style.backgroundColor = '#FF9800';
                         } else {
-                            // Восстанавливаем исходный цвет
-                            if (button.classList.contains('space-btn')) {
-                                button.style.backgroundColor = '#FF9800';
-                            } else {
-                                button.style.backgroundColor = '#4CAF50';
-                            }
-                            button.disabled = false;
+                            button.style.backgroundColor = '#4CAF50';
                         }
+                        button.disabled = false;
                     });
+                    
+                    // Для каждой буквы в введенном тексте находим и отмечаем первую доступную кнопку
+                    for (let i = 0; i < currentInput.length; i++) {
+                        const char = currentInput[i];
+                        const availableButton = Array.from(buttons).find(button => {
+                            const buttonChar = button.textContent === '␣' ? ' ' : button.textContent;
+                            return buttonChar === char && !button.disabled;
+                        });
+                        
+                        if (availableButton) {
+                            availableButton.style.backgroundColor = '#888';
+                            availableButton.disabled = true;
+                        }
+                    }
                 }
                 
                 // Функция для блокировки неправильного ввода с клавиатуры
@@ -179,8 +167,7 @@ model = genanki.Model(
                             const input = document.querySelector('#answer-field input');
                             if (input) {
                                 // Проверяем, является ли нажатая буква следующей ожидаемой
-                                // и не была ли она уже использована
-                                if (isNextCorrectChar(char) && !isCharUsed(char)) {
+                                if (isNextCorrectChar(char)) {
                                     // Добавляем символ к текущему значению
                                     // Для пробела добавляем обычный пробел, для остальных - символ как есть
                                     input.value += (char === ' ') ? ' ' : char;
