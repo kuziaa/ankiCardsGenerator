@@ -11,10 +11,20 @@ from models import ru_en_scramble_model
 import urllib.parse
 import io
 import csv
+from utils import properties_util
+import random
 
-# Ваши API ключи для Google Custom Search
-API_KEY = 'xxx'
-CX = 'xxx'
+# ----------------------- ЧТЕНИЕ НАСТРОЕК ИЗ .properties ФАЙЛА ----------------------------
+properties = properties_util.load_properties()
+
+# Получаем API ключи из настроек
+API_KEY = properties.get('API_KEY', '')
+CX = properties.get('CX', '')
+
+# Проверяем, что ключи загружены
+if not API_KEY or not CX:
+    print("Предупреждение: API_KEY или CX не найдены в config.properties файле!")
+    print("Скачивание изображений будет пропущено.")
 
 # ----------------------- ЧТЕНИЕ ДАННЫХ ИЗ CSV ----------------------------
 def load_cards_from_csv(csv_file_path='cards.csv'):
@@ -68,6 +78,11 @@ model_ru_en_scramble = ru_en_scramble_model.model
 
 # ----------------------- Функция для скачивания картинок ----------------------------
 def download_image(search_term, safe_word, max_attempts=5):
+    # Если API ключи не загружены, пропускаем скачивание
+    if not API_KEY or not CX:
+        print(f"Пропуск скачивания картинки для {search_term} (отсутствуют API ключи)")
+        return None
+        
     image_path = f"media/{safe_word}.jpg"
     
     # Если картинка уже существует, не скачиваем повторно
@@ -137,6 +152,7 @@ if not os.path.exists("media"):
     os.makedirs("media")
 
 media_files = []
+all_notes = []  # Список для сбора всех заметок перед перемешиванием
 
 for word, translation, example, incorrectEnVariant1, incorrectEnVariant2, incorrectEnVariant3, incorrectEnVariant4, incorrectRuVariant1, incorrectRuVariant2, incorrectRuVariant3, incorrectRuVariant4 in cards:
     safe = word.replace(" ", "_")
@@ -156,45 +172,53 @@ for word, translation, example, incorrectEnVariant1, incorrectEnVariant2, incorr
     if image_path:
         media_files.append(image_path)
 
-    # # EN → RU typing card
-    # deck.add_note(
-    #     genanki.Note(
-    #         model=model_en_ru_typing,
-    #         fields=[word, translation, example, f"[sound:{safe}.mp3]", image_field],
-    #     )
-    # )
+    # EN → RU typing card
+    all_notes.append(
+        genanki.Note(
+            model=model_en_ru_typing,
+            fields=[word, translation, example, f"[sound:{safe}.mp3]", image_field],
+        )
+    )
 
-    # # RU → EN typing card
-    # deck.add_note(
-    #     genanki.Note(
-    #         model=model_ru_en_typing,
-    #         fields=[word, translation, example, f"[sound:{safe}.mp3]", image_field],
-    #     )
-    # )
+    # RU → EN typing card
+    all_notes.append(
+        genanki.Note(
+            model=model_ru_en_typing,
+            fields=[word, translation, example, f"[sound:{safe}.mp3]", image_field],
+        )
+    )
 
-    # # EN → RU choice card
-    # deck.add_note(
-    #     genanki.Note(
-    #         model=model_en_ru_choice,
-    #         fields=[word, translation, example, f"[sound:{safe}.mp3]", incorrectRuVariant1, incorrectRuVariant2, incorrectRuVariant3, incorrectRuVariant4, image_field],
-    #     )
-    # )
+    # EN → RU choice card
+    all_notes.append(
+        genanki.Note(
+            model=model_en_ru_choice,
+            fields=[word, translation, example, f"[sound:{safe}.mp3]", incorrectRuVariant1, incorrectRuVariant2, incorrectRuVariant3, incorrectRuVariant4, image_field],
+        )
+    )
 
-    # # RU → EN choice card
-    # deck.add_note(
-    #     genanki.Note(
-    #         model=model_ru_en_choice,
-    #         fields=[word, translation, example, f"[sound:{safe}.mp3]", incorrectEnVariant1, incorrectEnVariant2, incorrectEnVariant3, incorrectEnVariant4, image_field],
-    #     )
-    # )
+    # RU → EN choice card
+    all_notes.append(
+        genanki.Note(
+            model=model_ru_en_choice,
+            fields=[word, translation, example, f"[sound:{safe}.mp3]", incorrectEnVariant1, incorrectEnVariant2, incorrectEnVariant3, incorrectEnVariant4, image_field],
+        )
+    )
 
     # RU → EN scrumble card
-    deck.add_note(
+    all_notes.append(
         genanki.Note(
             model=model_ru_en_scramble,
             fields=[word, translation, example, f"[sound:{safe}.mp3]", image_field],
         )
     )
+
+    # Перемешиваем список всех заметок
+    random.shuffle(all_notes)
+    print(f"Перемешано {len(all_notes)} заметок")
+
+    # Добавляем все перемешанные заметки в колоду
+    for note in all_notes:
+        deck.add_note(note)
 
 # ----------------------- PACKAGE ----------------------------
 
