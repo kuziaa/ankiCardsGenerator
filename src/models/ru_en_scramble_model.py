@@ -80,6 +80,35 @@ model = genanki.Model(
                     return usedCount >= requiredCount;
                 }
                 
+                // Функция для обновления состояния кнопок при вводе с клавиатуры
+                function updateButtonStates() {
+                    const input = document.querySelector('#answer-field input');
+                    const correctWord = "{{English}}";
+                    if (!input) return;
+                    
+                    const currentInput = input.value;
+                    
+                    // Для каждой буквы в правильном слове проверяем, была ли она уже введена
+                    const buttons = document.querySelectorAll('.letter-btn');
+                    buttons.forEach(button => {
+                        const buttonChar = button.textContent === '␣' ? ' ' : button.textContent;
+                        
+                        // Определяем, была ли эта буква уже использована
+                        if (isCharUsed(buttonChar)) {
+                            button.style.backgroundColor = '#888';
+                            button.disabled = true;
+                        } else {
+                            // Восстанавливаем исходный цвет
+                            if (button.classList.contains('space-btn')) {
+                                button.style.backgroundColor = '#FF9800';
+                            } else {
+                                button.style.backgroundColor = '#4CAF50';
+                            }
+                            button.disabled = false;
+                        }
+                    });
+                }
+                
                 // Функция для блокировки неправильного ввода с клавиатуры
                 function setupInputValidation() {
                     const input = document.querySelector('#answer-field input');
@@ -99,6 +128,11 @@ model = genanki.Model(
                         if (!nextChar || e.key !== nextChar) {
                             e.preventDefault();
                         }
+                    });
+                    
+                    // Обработчик для обновления состояния кнопок при вводе
+                    input.addEventListener('input', function(e) {
+                        updateButtonStates();
                     });
                 }
                 
@@ -153,10 +187,8 @@ model = genanki.Model(
                                     // Активируем событие для Anki
                                     input.dispatchEvent(new Event('input', { bubbles: true }));
                                     
-                                    // Визуальная обратная связь - кнопка становится неактивной
-                                    this.style.backgroundColor = '#888';
-                                    this.style.cursor = 'default';
-                                    this.disabled = true;
+                                    // Обновляем состояние кнопок
+                                    updateButtonStates();
                                 } 
                             }
                         });
