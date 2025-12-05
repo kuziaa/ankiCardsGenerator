@@ -80,6 +80,28 @@ model = genanki.Model(
                     return usedCount >= requiredCount;
                 }
                 
+                // Функция для блокировки неправильного ввода с клавиатуры
+                function setupInputValidation() {
+                    const input = document.querySelector('#answer-field input');
+                    if (!input) return;
+                    
+                    input.addEventListener('keydown', function(e) {
+                        // Разрешаем служебные клавиши (Backspace, Tab, стрелки и т.д.)
+                        if (e.key.length > 1 || e.ctrlKey || e.metaKey) {
+                            return;
+                        }
+                        
+                        const correctWord = "{{English}}";
+                        const currentValue = this.value;
+                        const nextChar = correctWord[currentValue.length];
+                        
+                        // Если вводимый символ не соответствует ожидаемому, блокируем ввод
+                        if (!nextChar || e.key !== nextChar) {
+                            e.preventDefault();
+                        }
+                    });
+                }
+                
                 // Функция для создания кнопок с буквами
                 function createLetterButtons() {
                     const englishWord = "{{English}}";
@@ -147,9 +169,11 @@ model = genanki.Model(
                 if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', function() {
                         createLetterButtons();
+                        setupInputValidation();
                     });
                 } else {
                     createLetterButtons();
+                    setupInputValidation();
                 }
                 </script>
             """,
