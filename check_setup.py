@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Скрипт для быстрого старта проекта.
-Проверяет зависимости и выполняет генерацию деки.
+Quick start script for the project.
+Checks dependencies and runs deck generation.
 """
 
 import subprocess
@@ -9,101 +9,101 @@ import sys
 from pathlib import Path
 
 def check_python_version():
-    """Проверяет версию Python."""
+    """Check Python version."""
     if sys.version_info < (3, 7):
-        print("❌ Требуется Python 3.7 или выше")
-        print(f"   Текущая версия: {sys.version}")
+        print("❌ Python 3.7 or higher is required")
+        print(f"   Current version: {sys.version}")
         return False
-    print(f"✅ Python версия: {sys.version.split()[0]}")
+    print(f"✅ Python version: {sys.version.split()[0]}")
     return True
 
 def check_requirements():
-    """Проверяет наличие необходимых пакетов."""
+    """Check if required packages are installed."""
     required = ['genanki', 'gtts', 'PIL', 'requests']
     missing = []
     
     for package in required:
         try:
             __import__(package)
-            print(f"✅ {package} установлен")
+            print(f"✅ {package} installed")
         except ImportError:
-            print(f"❌ {package} не установлен")
+            print(f"❌ {package} not installed")
             missing.append(package)
     
     if missing:
-        print(f"\n⚠️  Установите недостающие пакеты:")
+        print(f"\n⚠️  Install missing packages:")
         print(f"   pip install -r requirements.txt")
         return False
     
     return True
 
 def check_config():
-    """Проверяет наличие конфигурационного файла."""
+    """Check if configuration file exists."""
     config_path = Path("config.properties")
     sample_path = Path("config.properties.sample")
     
     if not config_path.exists():
         if sample_path.exists():
-            print("⚠️  config.properties не найден")
-            print(f"   Скопируйте из шаблона: cp config.properties.sample config.properties")
+            print("⚠️  config.properties not found")
+            print(f"   Copy from template: cp config.properties.sample config.properties")
         else:
-            print("❌ Ни config.properties, ни config.properties.sample не найдены")
+            print("❌ Neither config.properties nor config.properties.sample found")
             return False
         return False
     
-    print("✅ config.properties найден")
+    print("✅ config.properties found")
     return True
 
 def check_csv():
-    """Проверяет наличие CSV файла с данными."""
+    """Check if CSV file with data exists."""
     csv_path = Path("src/resources/cards.csv")
     
     if not csv_path.exists():
-        print(f"❌ CSV файл не найден: {csv_path}")
+        print(f"❌ CSV file not found: {csv_path}")
         return False
     
-    # Проверяем что файл не пустой
+    # Check that file is not empty
     with open(csv_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
     
-    if len(lines) < 2:  # Хотя бы заголовок и одна строка
-        print(f"⚠️  CSV файл почти пуст ({len(lines)} строк)")
+    if len(lines) < 2:  # At least header and one row
+        print(f"⚠️  CSV file is almost empty ({len(lines)} rows)")
         return False
     
-    print(f"✅ CSV файл найден ({len(lines)} строк)")
+    print(f"✅ CSV file found ({len(lines)} rows)")
     return True
 
 def main():
-    """Основная функция проверки и запуска."""
+    """Main function for environment check and launch."""
     print("=" * 60)
-    print("Anki Cards Generator - Проверка окружения")
+    print("Anki Cards Generator - Environment Check")
     print("=" * 60)
     print()
     
     checks = [
-        ("Python версия", check_python_version),
-        ("Зависимости", check_requirements),
-        ("Конфигурация", check_config),
-        ("CSV файл", check_csv),
+        ("Python version", check_python_version),
+        ("Dependencies", check_requirements),
+        ("Configuration", check_config),
+        ("CSV file", check_csv),
     ]
     
     results = []
     for check_name, check_func in checks:
-        print(f"\n📋 Проверка: {check_name}")
+        print(f"\n📋 Checking: {check_name}")
         try:
             result = check_func()
             results.append((check_name, result))
         except Exception as e:
-            print(f"❌ Ошибка при проверке: {e}")
+            print(f"❌ Error during check: {e}")
             results.append((check_name, False))
     
     print("\n" + "=" * 60)
-    print("Результаты проверки:")
+    print("Check Results:")
     print("=" * 60)
     
     all_passed = True
     for check_name, result in results:
-        status = "✅ OK" if result else "❌ ОШИБКА"
+        status = "✅ OK" if result else "❌ ERROR"
         print(f"{status}: {check_name}")
         if not result:
             all_passed = False
@@ -111,12 +111,12 @@ def main():
     print("=" * 60)
     
     if all_passed:
-        print("\n✨ Все проверки пройдены!")
-        print("\n🚀 Для запуска выполните:")
+        print("\n✨ All checks passed!")
+        print("\n🚀 To run, execute:")
         print("   cd src")
         print("   python anki_generator.py")
     else:
-        print("\n⚠️  Устраните ошибки перед запуском")
+        print("\n⚠️  Fix errors before running")
         return 1
     
     return 0

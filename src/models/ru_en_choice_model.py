@@ -38,7 +38,7 @@ model = genanki.Model(
                 </div>
                 
                 <script>
-                // Функция для перемешивания массива
+                // Function to shuffle array
                 function shuffleArray(array) {
                     for (let i = array.length - 1; i > 0; i--) {
                         const j = Math.floor(Math.random() * (i + 1));
@@ -47,23 +47,23 @@ model = genanki.Model(
                     return array;
                 }
                 
-                // Перемешиваем кнопки после полной загрузки карточки
+                // Shuffle buttons after full card load
                 function shuffleButtons() {
                     const container = document.getElementById('choices-container');
                     if (container) {
                         const buttons = Array.from(container.getElementsByClassName('choice-btn'));
                         
-                        // Удаляем все кнопки
+                        // Remove all buttons
                         while (container.firstChild) {
                             container.removeChild(container.firstChild);
                         }
                         
-                        // Перемешиваем и добавляем обратно
+                        // Shuffle and add back
                         shuffleArray(buttons).forEach(btn => container.appendChild(btn));
                     }
                 }
                 
-                // Пытаемся перемешать при загрузке DOM
+                // Try to shuffle on DOM load
                 if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', shuffleButtons);
                 } else {
@@ -134,7 +134,7 @@ model = genanki.Model(
             width: 300px;
             text-align: center;
         }
-        /* Ограничение размера и размытие изображения на лицевой стороне */
+        /* Limit size and blur image on front side */
         .image-front img {
             filter: blur(8px);
             transition: filter 0.5s ease;
@@ -146,7 +146,7 @@ model = genanki.Model(
             display: block;
         }
         
-        /* Ограничение размера и нормальное изображение на оборотной стороне */
+        /* Limit size and normal image on back side */
         .image-back img {
             filter: none;
             max-width: 300px;

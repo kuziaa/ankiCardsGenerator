@@ -9,8 +9,8 @@ def load_properties(properties_file_path='config.properties'):
                     properties[key.strip()] = value.strip()
         return properties
     except FileNotFoundError:
-        print(f"Ошибка: Файл {properties_file_path} не найден!")
+        print(f"Error: File {properties_file_path} not found!")
         return {}
     except Exception as e:
-        print(f"Ошибка при чтении файла {properties_file_path}: {e}")
+        print(f"Error reading file {properties_file_path}: {e}")
         return {}

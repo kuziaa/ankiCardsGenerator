@@ -1,7 +1,7 @@
 import genanki
 
 model = genanki.Model(
-    234556757,  # Уникальный ID модели
+    234556757,  # Unique model ID
     "EN-RU Scramble Model",
     fields=[
         {"name": "English"},
@@ -22,22 +22,22 @@ model = genanki.Model(
                     <div class="question-text">{{Russian}}</div>
                     {{Audio}}<br>
                     
-                    <!-- Контейнер для поля ввода -->
+                    <!-- Input field container -->
                     <div class="input-container">
-                        <!-- Поле ввода для ответа -->
+                        <!-- Answer input field -->
                         <div id="answer-field">
                             {{type:English}}
                         </div>
                     </div>
                     
-                    <!-- Контейнер для перемешанных букв английского слова -->
+                    <!-- Shuffled English word letter buttons container -->
                     <div id="letters-container" class="letters-container">
-                        <!-- Буквы будут добавлены скриптом -->
+                        <!-- Letters will be added by script -->
                     </div>
                 </div>
                 
                 <script>
-                // Функция для перемешивания массива
+                // Function to shuffle array
                 function shuffleArray(array) {
                     const newArray = [...array];
                     for (let i = newArray.length - 1; i > 0; i--) {
@@ -47,7 +47,7 @@ model = genanki.Model(
                     return newArray;
                 }
                 
-                // Функция для получения следующей ожидаемой буквы на основе текущего ввода
+                // Function to get next expected character based on current input
                 function getNextExpectedChar() {
                     const input = document.querySelector('#answer-field input');
                     const correctWord = "{{English}}";
@@ -57,27 +57,27 @@ model = genanki.Model(
                     return correctWord[currentInput.length];
                 }
                 
-                // Функция для проверки, является ли буква следующей правильной
+                // Function to check if character is the next correct one
                 function isNextCorrectChar(char) {
                     const expectedChar = getNextExpectedChar();
                     return char === expectedChar;
                 }
                 
-                // Функция для обновления состояния кнопок (больше не нужна, но оставляем для совместимости)
+                // Function to update button states (not used anymore, kept for compatibility)
                 function updateButtonStates() {
-                    // Эта функция больше не используется - логика отмечания кнопок
-                    // реализована в click handler и input event handler
+                    // This function is no longer used - button marking logic
+                    // is implemented in click handler and input event handler
                 }
                 
-                // Функция для блокировки неправильного ввода с клавиатуры
+                // Function to block incorrect keyboard input
                 function setupInputValidation() {
                     const input = document.querySelector('#answer-field input');
                     if (!input) return;
                     
-                    let isKeyboardInput = false;  // Флаг для отслеживания источника ввода
+                    let isKeyboardInput = false;  // Flag to track input source
                     
                     input.addEventListener('keydown', function(e) {
-                        // Разрешаем служебные клавиши (Backspace, Tab, стрелки и т.д.)
+                        // Allow special keys (Backspace, Tab, arrows, etc.)
                         if (e.key.length > 1 || e.ctrlKey || e.metaKey) {
                             return;
                         }
@@ -86,31 +86,31 @@ model = genanki.Model(
                         const currentValue = this.value;
                         const nextChar = correctWord[currentValue.length];
                         
-                        // Если вводимый символ не соответствует ожидаемому, блокируем ввод
+                        // If input char doesn't match expected, block input
                         if (!nextChar || e.key !== nextChar) {
                             e.preventDefault();
                         } else {
-                            // Отмечаем что ввод с клавиатуры
+                            // Mark that input is from keyboard
                             isKeyboardInput = true;
                         }
                     });
                     
-                    // Обработчик для отмечания кнопки при вводе с клавиатуры
+                    // Handler to mark button on keyboard input
                     input.addEventListener('input', function(e) {
-                        // Обработка ТОЛЬКО при вводе с клавиатуры, не при клике мышкой
+                        // Process ONLY on keyboard input, not on mouse click
                         if (isKeyboardInput) {
-                            // Отмечаем последнюю введённую букву
+                            // Mark last entered character
                             const buttons = document.querySelectorAll('.letter-btn');
                             const lastChar = this.value[this.value.length - 1];
                             
                             if (lastChar) {
-                                // Находим первую НЕ отмеченную кнопку с этой буквой и отмечаем её
+                                // Find first NON-marked button with this character and mark it
                                 let found = false;
                                 buttons.forEach(button => {
                                     if (!found) {
                                         const buttonChar = button.textContent === '␣' ? ' ' : button.textContent;
                                         if (buttonChar === lastChar && !button.disabled) {
-                                            // Отмечаем первую доступную кнопку с этой буквой
+                                            // Mark first available button with this character
                                             button.style.backgroundColor = '#888';
                                             button.disabled = true;
                                             found = true;
@@ -123,27 +123,27 @@ model = genanki.Model(
                     });
                 }
                 
-                // Функция для создания кнопок с буквами
+                // Function to create letter buttons
                 function createLetterButtons() {
                     const englishWord = "{{English}}";
                     const container = document.getElementById('letters-container');
                     
-                    // Очищаем контейнер
+                    // Clear container
                     container.innerHTML = '';
                     
-                    // Разбиваем слово на символы (включая пробелы) и перемешиваем
+                    // Split word into characters (including spaces) and shuffle
                     const characters = englishWord.split('');
                     const shuffledCharacters = shuffleArray(characters);
                     
-                    // Создаем кнопки для каждого символа
+                    // Create buttons for each character
                     shuffledCharacters.forEach(char => {
                         const button = document.createElement('button');
                         button.className = 'letter-btn';
                         
-                        // Для пробела используем специальное отображение
+                        // Use special display for space
                         if (char === ' ') {
-                            button.textContent = '␣';  // Символ пробела
-                            button.title = 'Пробел';
+                            button.textContent = '␣';  // Space character
+                            button.title = 'Space';
                             button.classList.add('space-btn');
                         } else {
                             button.textContent = char;
@@ -165,17 +165,17 @@ model = genanki.Model(
                         button.addEventListener('click', function() {
                             const input = document.querySelector('#answer-field input');
                             if (input) {
-                                // Проверяем, является ли нажатая буква следующей ожидаемой
+                                // Check if clicked character is the next expected one
                                 if (isNextCorrectChar(char)) {
-                                    // Добавляем символ к текущему значению
-                                    // Для пробела добавляем обычный пробел, для остальных - символ как есть
+                                    // Add character to current value
+                                    // For space add normal space, for others add character as is
                                     input.value += (char === ' ') ? ' ' : char;
                                     
-                                    // Отмечаем нажатую кнопку серым цветом
+                                    // Mark clicked button with gray color
                                     this.style.backgroundColor = '#888';
                                     this.disabled = true;
                                     
-                                    // НЕ вызываем dispatchEvent - это предотвращает двойное отмечание
+                                    // Do NOT call dispatchEvent - this prevents double marking
                                 } 
                             }
                         });
@@ -184,7 +184,7 @@ model = genanki.Model(
                     });
                 }
                 
-                // Инициализация при загрузке карточки
+                // Initialize on card load
                 if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', function() {
                         createLetterButtons();
@@ -205,7 +205,7 @@ model = genanki.Model(
                     <h2>{{Russian}}</h2><br>
                     {{Audio}}<br>
                     
-                    <!-- Проверка введенного ответа -->
+                    <!-- Check entered answer -->
                     {{type:English}}
                     
                     <hr id="answer">
@@ -248,7 +248,7 @@ model = genanki.Model(
             margin: 20px 0;
         }
         
-        /* Стили для поля ввода */
+        /* Styles for input field */
         #answer-field {
             max-width: 400px;
             text-align: center;
@@ -264,7 +264,7 @@ model = genanki.Model(
             box-sizing: border-box;
         }
         
-        /* Контейнер для букв */
+        /* Letter buttons container */
         .letters-container {
             margin: 20px 0;
             min-height: 50px;
@@ -273,7 +273,7 @@ model = genanki.Model(
             flex-wrap: wrap;
         }
         
-        /* Стили для кнопок букв */
+        /* Styles for letter buttons */
         .letter-btn {
             color: black;
             font-weight: bold;
@@ -288,13 +288,13 @@ model = genanki.Model(
             background-color: #4CAF50;
         }
         
-        /* Стили для кнопок букв при наведении */
+        /* Styles for letter buttons on hover */
         .letter-btn:hover:not(:disabled) {
             transform: scale(1.05);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
-        /* Стили для отключенных кнопок */
+        /* Styles for disabled buttons */
         .letter-btn:disabled {
             background-color: #888;
             cursor: default;
@@ -302,7 +302,7 @@ model = genanki.Model(
             box-shadow: none;
         }
         
-        /* Ограничение размера и размытие изображения на лицевой стороне */
+        /* Limit size and blur image on front side */
         .image-front img {
             filter: blur(8px);
             transition: filter 0.5s ease;
@@ -314,7 +314,7 @@ model = genanki.Model(
             display: block;
         }
         
-        /* Ограничение размера и нормальное изображение на оборотной стороне */
+        /* Limit size and normal image on back side */
         .image-back img {
             filter: none;
             max-width: 300px;
