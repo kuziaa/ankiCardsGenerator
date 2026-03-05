@@ -43,7 +43,7 @@ model = genanki.Model(
             background-color: white;
         }
 
-        /* Ограничение размера и размытие изображения на лицевой стороне */
+        /* Limit size and blur image on front side */
         .image-front img {
             filter: blur(8px);
             transition: filter 0.5s ease;
@@ -55,7 +55,7 @@ model = genanki.Model(
             display: block;
         }
         
-        /* Ограничение размера и нормальное изображение на оборотной стороне */
+        /* Limit size and normal image on back side */
         .image-back img {
             filter: none;
             max-width: 300px;

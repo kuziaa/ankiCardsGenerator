@@ -11,7 +11,7 @@ logger = setup_logger(__name__)
 
 
 class CardData:
-    """Класс для хранения данных одной карточки."""
+    """Class for storing data of one flashcard."""
     
     def __init__(self, english: str, russian: str, example: str,
                  incorrect_en: List[str], incorrect_ru: List[str]):
@@ -24,10 +24,10 @@ class CardData:
 
 
 class CardGenerator:
-    """Класс для генерации Anki карточек различных типов."""
+    """Class for generating Anki flashcards of various types."""
     
     def __init__(self):
-        """Инициализирует генератор карточек с моделями."""
+        """Initialize card generator with models."""
         self.model_en_ru_typing = en_ru_typing_model.model
         self.model_ru_en_typing = ru_en_typing_model.model
         self.model_en_ru_choice = en_ru_choice_model.model
@@ -37,19 +37,19 @@ class CardGenerator:
     def create_cards(self, card_data: CardData, audio_path: str = None,
                     image_path: str = None) -> List[genanki.Note]:
         """
-        Создает набор карточек для одного слова (все 5 типов).
+        Create a set of flashcards for one word (all 5 types).
         
         Args:
-            card_data: Объект с данными карточки
-            audio_path: Путь к аудиофайлу (может быть None)
-            image_path: Путь к изображению (может быть None)
+            card_data: Object with flashcard data
+            audio_path: Path to audio file (can be None)
+            image_path: Path to image (can be None)
             
         Returns:
-            Список созданных заметок (Note объектов)
+            List of created notes (Note objects)
         """
         notes = []
         
-        # Подготавливаем звук и изображение
+        # Prepare audio and image
         audio_field = f"[sound:{card_data.safe_filename}.mp3]" if audio_path else ""
         image_field = f'<img src="{card_data.safe_filename}.jpg">' if image_path else ""
         
@@ -99,33 +99,33 @@ class CardGenerator:
                 )
             )
             
-            logger.debug(f"Успешно созданы 5 карточек для слова: {card_data.english}")
+            logger.debug(f"Successfully created 5 flashcards for word: {card_data.english}")
             return notes
             
         except Exception as e:
-            logger.error(f"✗ Ошибка при создании карточек для '{card_data.english}': {e}")
+            logger.error(f"✗ Error creating flashcards for '{card_data.english}': {e}")
             return []
 
 
 def create_deck_from_cards(cards: List[genanki.Note], deck_id: int,
                           deck_name: str) -> genanki.Deck:
     """
-    Создает Anki деку из списка карточек.
+    Create Anki deck from list of flashcards.
     
     Args:
-        cards: Список заметок (Note объектов)
-        deck_id: ID деки
-        deck_name: Имя деки
+        cards: List of notes (Note objects)
+        deck_id: Deck ID
+        deck_name: Deck name
         
     Returns:
-        Объект Anki деки
+        Anki deck object
     """
     try:
         deck = genanki.Deck(deck_id, deck_name)
         for note in cards:
             deck.add_note(note)
-        logger.info(f"✓ Дека успешно создана: '{deck_name}' ({len(cards)} карточек)")
+        logger.info(f"✓ Deck successfully created: '{deck_name}' ({len(cards)} flashcards)")
         return deck
     except Exception as e:
-        logger.error(f"✗ Ошибка при создании деки: {e}")
+        logger.error(f"✗ Error creating deck: {e}")
         raise

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Anki Cards Generator - Генератор карточек для изучения английских слов
+Anki Cards Generator - Generate flashcards for learning English vocabulary
 
-Этот скрипт создает Anki деку с карточками из CSV файла, включая:
-- Генерацию аудио для каждого слова
-- Скачивание изображений через Google Custom Search
-- Создание 5 типов карточек (typing, choice, scramble)
+This script creates an Anki deck with flashcards from a CSV file, including:
+- Audio generation for each word
+- Image downloading via Google Custom Search
+- Creation of 5 types of flashcards (typing, choice, scramble)
 """
 
 import csv
@@ -20,31 +20,31 @@ from utils.properties_util import load_properties
 from utils.media_manager import MediaManager
 from utils.card_generator import CardGenerator, CardData, create_deck_from_cards
 
-# Инициализируем логгер
+# Initialize logger
 logger = setup_logger(__name__)
 
 
 def load_cards_from_csv(csv_file_path: str) -> list:
     """
-    Загружает карточки из CSV файла.
+    Load flashcards from a CSV file.
     
     Args:
-        csv_file_path: Путь к CSV файлу
+        csv_file_path: Path to the CSV file
         
     Returns:
-        Список объектов CardData
+        List of CardData objects
     """
     cards = []
     
     if not Path(csv_file_path).exists():
-        logger.error(f"✗ Файл {csv_file_path} не найден!")
+        logger.error(f"✗ File {csv_file_path} not found!")
         return cards
     
     try:
         with open(csv_file_path, 'r', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
             
-            # Проверяем наличие необходимых столбцов
+            # Check for required columns
             required_columns = {
                 'english', 'russian', 'example',
                 'incorrectEnVariant1', 'incorrectEnVariant2', 
@@ -54,12 +54,12 @@ def load_cards_from_csv(csv_file_path: str) -> list:
             }
             
             if reader.fieldnames is None:
-                logger.error("CSV файл пуст или повреждён!")
+                logger.error("CSV file is empty or corrupted!")
                 return cards
             
             if not required_columns.issubset(set(reader.fieldnames)):
                 missing = required_columns - set(reader.fieldnames)
-                logger.error(f"В CSV файле отсутствуют столбцы: {missing}")
+                logger.error(f"Missing columns in CSV file: {missing}")
                 return cards
             
             for idx, row in enumerate(reader, 1):
@@ -82,78 +82,78 @@ def load_cards_from_csv(csv_file_path: str) -> list:
                         ]
                     )
                     
-                    # Валидация данных
+                    # Data validation
                     if not card.english or not card.russian:
-                        logger.warning(f"Строка {idx}: пропущена (отсутствует английское или русское слово)")
+                        logger.warning(f"Row {idx}: skipped (missing english or russian word)")
                         continue
                     
                     cards.append(card)
                     
                 except KeyError as e:
-                    logger.warning(f"Строка {idx}: ошибка при чтении столбца {e}")
+                    logger.warning(f"Row {idx}: error reading column {e}")
                     continue
                 except Exception as e:
-                    logger.warning(f"Строка {idx}: непредвиденная ошибка {e}")
+                    logger.warning(f"Row {idx}: unexpected error {e}")
                     continue
         
-        logger.info(f"✓ Успешно загружено {len(cards)} карточек из {csv_file_path}")
+        logger.info(f"✓ Successfully loaded {len(cards)} flashcards from {csv_file_path}")
         return cards
         
     except Exception as e:
-        logger.error(f"✗ Ошибка при чтении CSV файла: {e}")
+        logger.error(f"✗ Error reading CSV file: {e}")
         return []
 
 
 def main():
-    """Основная функция для генерации Anki деки."""
+    """Main function to generate Anki deck."""
     
     logger.info("=" * 60)
-    logger.info("Запуск Anki Cards Generator")
+    logger.info("Starting Anki Cards Generator")
     logger.info("=" * 60)
     
-    # Загружаем настройки
+    # Load configuration
     try:
-        # Ищем config в корневой папке проекта
+        # Find config in project root directory
         config_path = Path(__file__).parent.parent / 'config.properties'
         properties = load_properties(str(config_path))
     except Exception as e:
-        logger.error(f"✗ Не удалось загрузить настройки: {e}")
+        logger.error(f"✗ Failed to load configuration: {e}")
         return False
     
-    # Получаем параметры из конфига
+    # Get parameters from config
     api_key = properties.get('API_KEY', '')
     cx = properties.get('CX', '')
     deck_id = int(properties.get('DECK_ID', '999004'))
     deck_name = properties.get('DECK_NAME', 'Custom EN-RU Vocabulary Deck')
     
-    # Преобразуем пути относительно корневой папки проекта
+    # Transform paths relative to project root directory
     root_path = Path(__file__).parent.parent
     csv_file_path = root_path / properties.get('CSV_FILE_PATH', 'src/resources/cards.csv')
     media_dir = root_path / properties.get('MEDIA_DIR', 'media')
     output_file = root_path / properties.get('OUTPUT_FILE', 'vocabulary.apkg')
     
-    # Загружаем карточки из CSV
+    # Load flashcards from CSV
     cards_data = load_cards_from_csv(str(csv_file_path))
     
     if not cards_data:
-        logger.error("✗ Нет карточек для обработки. Выход.")
+        logger.error("✗ No flashcards to process. Exiting.")
         return False
     
-    # Инициализируем менеджер медиа и генератор карточек
+    # Initialize media manager and card generator
     media_manager = MediaManager(media_dir=str(media_dir), api_key=api_key, cx=cx)
     card_generator = CardGenerator()
     
     all_notes = []
     media_files = []
     
-    logger.info(f"Обработка {len(cards_data)} слов...")
+    logger.info(f"Processing {len(cards_data)} words...")
     
-    # Обрабатываем каждое слово
+    # Process each word
     for idx, card_data in enumerate(cards_data, 1):
         try:
-            logger.info(f"[{idx}/{len(cards_data)}] Обработка: {card_data.english}")
+            logger.info(f"[{idx}/{len(cards_data)}] Processing: {card_data.english}")
             
-            # Генерируем аудио
+            # Generate audio
             audio_path = media_manager.generate_audio(
                 text=card_data.english,
                 safe_filename=card_data.safe_filename
@@ -161,7 +161,7 @@ def main():
             if audio_path:
                 media_files.append(audio_path)
             
-            # Скачиваем изображение
+            # Download image
             image_path = media_manager.download_image(
                 search_term=card_data.english,
                 safe_filename=card_data.safe_filename
@@ -169,7 +169,7 @@ def main():
             if image_path:
                 media_files.append(image_path)
             
-            # Создаем карточки
+            # Create flashcards
             notes = card_generator.create_cards(
                 card_data=card_data,
                 audio_path=audio_path,
@@ -179,40 +179,40 @@ def main():
             if notes:
                 all_notes.extend(notes)
             else:
-                logger.warning(f"Не удалось создать карточки для {card_data.english}")
+                logger.warning(f"Failed to create flashcards for {card_data.english}")
                 
         except Exception as e:
-            logger.error(f"✗ Ошибка при обработке слова '{card_data.english}': {e}")
+            logger.error(f"✗ Error processing word '{card_data.english}': {e}")
             continue
     
     if not all_notes:
-        logger.error("✗ Не удалось создать ни одну карточку. Выход.")
+        logger.error("✗ Failed to create any flashcards. Exiting.")
         return False
     
-    # Перемешиваем карточки
-    logger.info(f"Перемешивание {len(all_notes)} карточек...")
+    # Shuffle flashcards
+    logger.info(f"Shuffling {len(all_notes)} flashcards...")
     random.shuffle(all_notes)
     
-    # Создаем деку
+    # Create deck
     try:
         deck = create_deck_from_cards(all_notes, deck_id, deck_name)
     except Exception as e:
-        logger.error(f"✗ Не удалось создать деку: {e}")
+        logger.error(f"✗ Failed to create deck: {e}")
         return False
     
-    # Упаковываем в APKG файл
+    # Package into APKG file
     try:
-        logger.info(f"Сохранение деки в {output_file}...")
+        logger.info(f"Saving deck to {output_file}...")
         genanki.Package(deck, media_files).write_to_file(str(output_file))
-        logger.info(f"✓ APKG файл успешно создан: {output_file}")
+        logger.info(f"✓ APKG file successfully created: {output_file}")
     except Exception as e:
-        logger.error(f"✗ Ошибка при сохранении APKG файла: {e}")
+        logger.error(f"✗ Error saving APKG file: {e}")
         return False
     
     logger.info("=" * 60)
-    logger.info("✓ Процесс успешно завершен!")
-    logger.info(f"  Всего карточек создано: {len(all_notes)}")
-    logger.info(f"  Файл сохранен: {output_file}")
+    logger.info("✓ Process completed successfully!")
+    logger.info(f"  Total flashcards created: {len(all_notes)}")
+    logger.info(f"  File saved: {output_file}")
     logger.info("=" * 60)
     
     return True
@@ -223,10 +223,10 @@ if __name__ == "__main__":
         success = main()
         sys.exit(0 if success else 1)
     except KeyboardInterrupt:
-        logger.info("\n⚠ Процесс прерван пользователем")
+        logger.info("\n⚠ Process interrupted by user")
         sys.exit(1)
     except Exception as e:
-        logger.error(f"✗ Неожиданная ошибка: {e}")
+        logger.error(f"✗ Unexpected error: {e}")
         import traceback
         logger.error(traceback.format_exc())
         sys.exit(1)

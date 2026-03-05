@@ -11,85 +11,85 @@ logger = setup_logger(__name__)
 
 
 class MediaManager:
-    """Класс для управления скачиванием и генерацией медиафайлов (аудио, изображения)."""
+    """Class for managing media file downloads and generation (audio, images)."""
     
     def __init__(self, media_dir: str = "media", api_key: str = "", cx: str = ""):
         """
-        Инициализирует менеджер медиа.
+        Initialize the media manager.
         
         Args:
-            media_dir: Папка для сохранения медиафайлов
-            api_key: Google Custom Search API ключ
-            cx: Google Custom Search CX параметр
+            media_dir: Directory for saving media files
+            api_key: Google Custom Search API key
+            cx: Google Custom Search CX parameter
         """
         self.media_dir = Path(media_dir)
         self.api_key = api_key
         self.cx = cx
         self.has_api_keys = bool(api_key and cx)
         
-        # Создаем папку для медиа если её нет
+        # Create media directory if it doesn't exist
         self.media_dir.mkdir(exist_ok=True)
         
         if not self.has_api_keys:
-            logger.warning("API ключи для Google Custom Search не найдены. "
-                         "Скачивание изображений будет пропущено.")
+            logger.warning("API keys for Google Custom Search not found. "
+                         "Image downloading will be skipped.")
     
     def generate_audio(self, text: str, safe_filename: str, lang: str = "en") -> str:
         """
-        Генерирует аудиофайл для текста.
+        Generate audio file for text.
         
         Args:
-            text: Текст для озвучивания
-            safe_filename: Безопасное имя файла (без расширения)
-            lang: Язык (по умолчанию английский)
+            text: Text to speak
+            safe_filename: Safe filename (without extension)
+            lang: Language (English by default)
             
         Returns:
-            Путь к файлу аудио или None если ошибка
+            Path to audio file or None if error
         """
         audio_path = self.media_dir / f"{safe_filename}.mp3"
         
-        # Если файл уже существует, возвращаем путь
+        # If file already exists, return path
         if audio_path.exists():
-            logger.debug(f"Аудиофайл уже существует: {audio_path}")
+            logger.debug(f"Audio file already exists: {audio_path}")
             return str(audio_path)
         
         try:
-            logger.info(f"Генерирование аудио для: {text}")
+            logger.info(f"Generating audio for: {text}")
             tts = gTTS(text=text, lang=lang)
             tts.save(str(audio_path))
-            logger.info(f"✓ Аудиофайл успешно создан: {audio_path}")
+            logger.info(f"✓ Audio file successfully created: {audio_path}")
             return str(audio_path)
         except Exception as e:
-            logger.error(f"✗ Ошибка при генерировании аудио для '{text}': {e}")
+            logger.error(f"✗ Error generating audio for '{text}': {e}")
             return None
     
     def download_image(self, search_term: str, safe_filename: str, max_attempts: int = 5) -> str:
         """
-        Скачивает изображение через Google Custom Search.
+        Download image via Google Custom Search.
         
         Args:
-            search_term: Поисковый запрос
-            safe_filename: Безопасное имя файла (без расширения)
-            max_attempts: Максимальное количество попыток
+            search_term: Search query
+            safe_filename: Safe filename (without extension)
+            max_attempts: Maximum number of attempts
             
         Returns:
-            Путь к скачанному изображению или None если ошибка/отсутствуют ключи
+            Path to downloaded image or None if error/missing keys
         """
-        # Если API ключи не загружены, пропускаем
+        # Skip if API keys are not loaded
         if not self.has_api_keys:
-            logger.debug(f"Пропуск скачивания картинки для '{search_term}' "
-                        "(отсутствуют API ключи)")
+            logger.debug(f"Skipping image download for '{search_term}' "
+                        "(API keys missing)")
             return None
         
         image_path = self.media_dir / f"{safe_filename}.jpg"
         
-        # Если картинка уже существует, не скачиваем повторно
+        # If image already exists, don't download again
         if image_path.exists():
-            logger.debug(f"Изображение уже существует: {image_path}")
+            logger.debug(f"Image already exists: {image_path}")
             return str(image_path)
         
         try:
-            # Поиск картинок через Google Custom Search
+            # Search for images via Google Custom Search
             url = (f"https://www.googleapis.com/customsearch/v1?"
                    f"q={urllib.parse.quote(search_term)}&"
                    f"searchType=image&"
@@ -97,63 +97,63 @@ class MediaManager:
                    f"cx={self.cx}&"
                    f"num={max_attempts}")
             
-            logger.info(f"Поиск изображений для: {search_term}")
+            logger.info(f"Searching for images: {search_term}")
             response = requests.get(url, timeout=10)
             response.raise_for_status()
             results = response.json()
             
             if 'items' not in results or len(results['items']) == 0:
-                logger.warning(f"Изображения не найдены для: {search_term}")
+                logger.warning(f"No images found for: {search_term}")
                 return None
             
-            # Пытаемся скачать каждую картинку по очереди
+            # Try to download each image in sequence
             for i, item in enumerate(results['items'][:max_attempts]):
                 image_url = item['link']
-                logger.debug(f"Попытка {i+1}/{max_attempts}: {image_url}")
+                logger.debug(f"Attempt {i+1}/{max_attempts}: {image_url}")
                 
                 try:
-                    # Скачиваем картинку
+                    # Download image
                     img_response = requests.get(image_url, timeout=10)
                     img_response.raise_for_status()
                     
-                    # Пытаемся открыть изображение для проверки
+                    # Try to open image for validation
                     image = Image.open(io.BytesIO(img_response.content))
                     image.verify()
                     
-                    # Сбрасываем указатель и снова открываем
+                    # Reset pointer and open again
                     image = Image.open(io.BytesIO(img_response.content))
                     
-                    # Конвертируем в RGB если необходимо
+                    # Convert to RGB if necessary
                     if image.mode in ('RGBA', 'P', 'LA'):
                         image = image.convert('RGB')
                     
-                    # Сохраняем картинку
+                    # Save image
                     image.save(str(image_path), 'JPEG', quality=85)
-                    logger.info(f"✓ Изображение успешно скачано: {search_term}")
+                    logger.info(f"✓ Image successfully downloaded: {search_term}")
                     return str(image_path)
                     
                 except Exception as e:
-                    logger.debug(f"Не удалось обработать изображение {i+1} "
-                               f"для '{search_term}': {e}")
+                    logger.debug(f"Failed to process image {i+1} "
+                               f"for '{search_term}': {e}")
                     continue
             
-            logger.warning(f"Не удалось скачать ни одно изображение для: {search_term}")
+            logger.warning(f"Failed to download any image for: {search_term}")
             return None
             
         except requests.RequestException as e:
-            logger.error(f"✗ Ошибка при поиске изображений для '{search_term}': {e}")
+            logger.error(f"✗ Error searching for images for '{search_term}': {e}")
             return None
         except Exception as e:
-            logger.error(f"✗ Неожиданная ошибка при скачивании изображения "
-                        f"для '{search_term}': {e}")
+            logger.error(f"✗ Unexpected error downloading image "
+                        f"for '{search_term}': {e}")
             return None
     
     def get_media_files_list(self) -> list:
         """
-        Возвращает список всех медиафайлов в папке.
+        Get list of all media files in directory.
         
         Returns:
-            Список путей к медиафайлам
+            List of paths to media files
         """
         media_files = []
         if self.media_dir.exists():

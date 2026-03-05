@@ -1,226 +1,226 @@
 # Anki Cards Generator
 
-Автоматизированный инструмент для создания Anki деки с карточками для изучения английских слов на основе CSV файла.
+An automated tool for creating Anki decks with flashcards for learning English vocabulary based on a CSV file.
 
-## Возможности
+## Features
 
-- 📚 **5 типов карточек**: Typing (EN→RU, RU→EN), Multiple Choice (EN→RU, RU→EN), Scramble (RU→EN)
-- 🔊 **Автоматическое генерирование аудио** для каждого слова с помощью gTTS
-- 🖼️ **Скачивание иллюстраций** через Google Custom Search API
-- 📊 **Гибкая конфигурация** через properties файл
-- 📝 **Структурированное логирование** с выводом в консоль и файл
-- ⚙️ **Модульная архитектура** для легкого расширения функционала
-- 🛡️ **Надежная обработка ошибок** с возможностью продолжения при ошибках
+- 📚 **5 Card Types**: Typing (EN→RU, RU→EN), Multiple Choice (EN→RU, RU→EN), Scramble (RU→EN)
+- 🔊 **Automatic Audio Generation** for each word using gTTS
+- 🖼️ **Image Downloads** via Google Custom Search API
+- 📊 **Flexible Configuration** through properties file
+- 📝 **Structured Logging** with console and file output
+- ⚙️ **Modular Architecture** for easy functionality extension
+- 🛡️ **Reliable Error Handling** with ability to continue on errors
 
-## Требования
+## Requirements
 
 - Python 3.7+
-- Зависимости указаны в `requirements.txt`
+- Dependencies listed in `requirements.txt`
 
-## Установка
+## Installation
 
-1. **Клонируйте репозиторий** или распакуйте архив
+1. **Clone the repository** or extract the archive
 
-2. **Установите зависимости**:
+2. **Install dependencies**:
 ```bash
 pip install -r requirements.txt
 ```
 
-3. **Настройте конфигурацию**:
+3. **Configure the application**:
 ```bash
 cp config.properties.sample config.properties
 ```
 
-4. **Отредактируйте `config.properties`** (необязательно для базовой работы):
+4. **Edit `config.properties`** (optional for basic operation):
 ```properties
-# Google Custom Search API настройки (опционально)
+# Google Custom Search API settings (optional)
 API_KEY=yourGoogleCustomSearchApiKey
 CX=yourGoogleCustomSearchCx
 
-# Настройки деки Anki
+# Anki deck settings
 DECK_ID=999004
 DECK_NAME=Custom EN-RU Vocabulary Deck
 
-# Путь к CSV файлу с карточками
+# Path to CSV file with cards
 CSV_FILE_PATH=src/resources/cards.csv
 
-# Путь к папке для медиафайлов
+# Path to media folder
 MEDIA_DIR=media
 
-# Путь к выходному APKG файлу
+# Path to output APKG file
 OUTPUT_FILE=vocabulary.apkg
 ```
 
-## Подготовка данных
+## Data Preparation
 
-### Формат CSV файла
+### CSV File Format
 
-Создайте CSV файл со следующими обязательными столбцами:
+Create a CSV file with the following required columns:
 
-| Столбец | Описание | Пример |
-|---------|---------|--------|
-| `english` | Английское слово/фраза | "express my deep gratitude" |
-| `russian` | Русский перевод | "выразить глубокую благодарность" |
-| `example` | Пример использования | "I would like to express my deep gratitude…" |
-| `incorrectEnVariant1` | Неправильный вариант (EN) 1 | "impress my dog gratitude" |
-| `incorrectEnVariant2` | Неправильный вариант (EN) 2 | "depress my seed gratitude" |
-| `incorrectEnVariant3` | Неправильный вариант (EN) 3 | "compress my deep attitude" |
-| `incorrectEnVariant4` | Неправильный вариант (EN) 4 | "oppress my cheap gratitude" |
-| `incorrectRuVariant1` | Неправильный вариант (RU) 1 | "выразить легкую благодарность" |
-| `incorrectRuVariant2` | Неправильный вариант (RU) 2 | "выразить поверхностную признательность" |
-| `incorrectRuVariant3` | Неправильный вариант (RU) 3 | "выразить формальную благодарность" |
-| `incorrectRuVariant4` | Неправильный вариант (RU) 4 | "выразить обычную признательность" |
+| Column | Description | Example |
+|--------|-------------|---------|
+| `english` | English word/phrase | "express my deep gratitude" |
+| `russian` | Russian translation | "выразить глубокую благодарность" |
+| `example` | Usage example | "I would like to express my deep gratitude…" |
+| `incorrectEnVariant1` | Wrong variant (EN) 1 | "impress my dog gratitude" |
+| `incorrectEnVariant2` | Wrong variant (EN) 2 | "depress my seed gratitude" |
+| `incorrectEnVariant3` | Wrong variant (EN) 3 | "compress my deep attitude" |
+| `incorrectEnVariant4` | Wrong variant (EN) 4 | "oppress my cheap gratitude" |
+| `incorrectRuVariant1` | Wrong variant (RU) 1 | "выразить легкую благодарность" |
+| `incorrectRuVariant2` | Wrong variant (RU) 2 | "выразить поверхностную признательность" |
+| `incorrectRuVariant3` | Wrong variant (RU) 3 | "выразить формальную благодарность" |
+| `incorrectRuVariant4` | Wrong variant (RU) 4 | "выразить обычную признательность" |
 
-Пример CSV файла находится в `src/resources/cards.csv`.
+Example CSV file is located in `src/resources/cards.csv`.
 
-## Использование
+## Usage
 
-### Базовый запуск
+### Basic Execution
 
 ```bash
 cd src
 python anki_generator.py
 ```
 
-### С Google Custom Search API (для скачивания изображений)
+### With Google Custom Search API (for image downloads)
 
-1. **Создайте Google Custom Search API ключ**:
-   - Перейдите на https://programmablesearchengine.google.com/
-   - Создайте новый поисковик
-   - Получите API KEY и CX
+1. **Create Google Custom Search API key**:
+   - Go to https://programmablesearchengine.google.com/
+   - Create a new search engine
+   - Obtain API KEY and CX
 
-2. **Обновите `config.properties`**:
+2. **Update `config.properties`**:
 ```properties
 API_KEY=your_actual_api_key
 CX=your_actual_cx
 ```
 
-3. **Запустите скрипт**:
+3. **Run the script**:
 ```bash
 cd src
 python anki_generator.py
 ```
 
-## Структура проекта
+## Project Structure
 
 ```
 ankiCardsGenerator/
-├── config.properties              # Конфигурация (не отслеживается Git)
-├── config.properties.sample       # Пример конфигурации
-├── requirements.txt               # Зависимости
-├── README.md                      # Документация
+├── config.properties              # Configuration (not tracked by Git)
+├── config.properties.sample       # Configuration example
+├── requirements.txt               # Dependencies
+├── README.md                      # Documentation
 ├── src/
-│   ├── anki_generator.py         # Основной скрипт
-│   ├── models/                   # Модели карточек
+│   ├── anki_generator.py         # Main script
+│   ├── models/                   # Card models
 │   │   ├── en_ru_typing_model.py
 │   │   ├── ru_en_typing_model.py
 │   │   ├── en_ru_choice_model.py
 │   │   ├── ru_en_choice_model.py
 │   │   └── ru_en_scramble_model.py
-│   ├── utils/                    # Вспомогательные модули
-│   │   ├── logger.py             # Логирование
-│   │   ├── properties_util.py    # Загрузка конфигурации
-│   │   ├── media_manager.py      # Управление медиа
-│   │   └── card_generator.py     # Генерация карточек
+│   ├── utils/                    # Utility modules
+│   │   ├── logger.py             # Logging
+│   │   ├── properties_util.py    # Configuration loading
+│   │   ├── media_manager.py      # Media management
+│   │   └── card_generator.py     # Card generation
 │   ├── resources/
-│   │   └── cards.csv             # CSV с исходными данными
-│   └── media/                    # Генерируемые медиафайлы (не отслеживается)
-│       ├── *.mp3                 # Аудиофайлы
-│       └── *.jpg                 # Изображения
-└── logs/                         # Логи выполнения (не отслеживается)
+│   │   └── cards.csv             # CSV with source data
+│   └── media/                    # Generated media files (not tracked)
+│       ├── *.mp3                 # Audio files
+│       └── *.jpg                 # Images
+└── logs/                         # Execution logs (not tracked)
     └── anki_generator.log
 ```
 
-## Выходные данные
+## Output Files
 
-После успешного выполнения будут созданы:
+After successful execution, the following will be created:
 
-- **vocabulary.apkg** - готовая Anki дека для импорта
-- **media/** - папка с аудиофайлами (.mp3) и изображениями (.jpg)
-- **logs/anki_generator.log** - лог выполнения со всеми деталями
+- **vocabulary.apkg** - Ready Anki deck for import
+- **media/** - Folder with audio files (.mp3) and images (.jpg)
+- **logs/anki_generator.log** - Execution log with all details
 
-## Обработка ошибок
+## Error Handling
 
-Скрипт разработан с учетом надежности:
+The script is designed with reliability in mind:
 
-- ❌ Если не удается скачать одно изображение - процесс продолжится со следующего слова
-- ❌ Если не удается сгенерировать аудио - карточка будет создана без звука
-- ❌ Если CSV содержит ошибочные строки - они будут пропущены с логированием
-- ✅ Все ошибки записываются в `logs/anki_generator.log`
+- ❌ If an image fails to download - the process continues with the next word
+- ❌ If audio generation fails - the card is created without sound
+- ❌ If CSV contains incorrect rows - they are skipped with logging
+- ✅ All errors are recorded in `logs/anki_generator.log`
 
-## Типы создаваемых карточек
+## Card Types Created
 
-Для каждого слова создается 5 карточек:
+For each word, 5 cards are created:
 
-1. **EN→RU Typing** - Напишите русский перевод английского слова
-2. **RU→EN Typing** - Напишите английский перевод русского слова  
-3. **EN→RU Choice** - Выберите правильный русский перевод из 4 вариантов
-4. **RU→EN Choice** - Выберите правильный английский перевод из 4 вариантов
-5. **RU→EN Scramble** - Расставьте буквы английского слова в правильном порядке
+1. **EN→RU Typing** - Write the Russian translation of the English word
+2. **RU→EN Typing** - Write the English translation of the Russian word
+3. **EN→RU Choice** - Select the correct Russian translation from 4 options
+4. **RU→EN Choice** - Select the correct English translation from 4 options
+5. **RU→EN Scramble** - Arrange the letters of the English word in the correct order
 
-Каждая карточка содержит:
-- 🔊 Аудиопроизношение (если API ключи настроены)
-- 🖼️ Иллюстрацию (если API ключи настроены)
-- 📝 Пример использования на обратной стороне
+Each card contains:
+- 🔊 Audio pronunciation (if API keys are configured)
+- 🖼️ Illustration (if API keys are configured)
+- 📝 Usage example on the back side
 
-## Расширение функционала
+## Extending Functionality
 
-### Добавление нового типа карточки
+### Adding a New Card Type
 
-1. Создайте новый файл модели в `src/models/your_model.py`
-2. Определите структуру карточки в genanki.Model
-3. Добавьте создание карточек в `card_generator.py`
-4. Обновите `anki_generator.py` для использования новой карточки
+1. Create a new model file in `src/models/your_model.py`
+2. Define the card structure in genanki.Model
+3. Add card creation to `card_generator.py`
+4. Update `anki_generator.py` to use the new card
 
-### Изменение дизайна карточек
+### Changing Card Design
 
-Отредактируйте соответствующие файлы в `src/models/`:
-- Измените HTML шаблоны в `qfmt` (фронт) и `afmt` (спина)
-- Обновите CSS в `css` блоке
-- Отредактируйте список полей в `fields`
+Edit the corresponding files in `src/models/`:
+- Change HTML templates in `qfmt` (front) and `afmt` (back)
+- Update CSS in the `css` block
+- Edit the field list in `fields`
 
-## Решение проблем
+## Troubleshooting
 
-### Проблема: "ModuleNotFoundError: No module named 'genanki'"
-**Решение**: Установите зависимости: `pip install -r requirements.txt`
+### Issue: "ModuleNotFoundError: No module named 'genanki'"
+**Solution**: Install dependencies: `pip install -r requirements.txt`
 
-### Проблема: "FileNotFoundError: Файл config.properties не найден"
-**Решение**: Создайте файл: `cp config.properties.sample config.properties`
+### Issue: "FileNotFoundError: config.properties file not found"
+**Solution**: Create the file: `cp config.properties.sample config.properties`
 
-### Проблема: Изображения не скачиваются
-**Решение**: 
-- Проверьте наличие API_KEY и CX в config.properties
-- Убедитесь, что API квота не исчерпана
-- Проверьте интернет соединение
-- Смотрите логи в `logs/anki_generator.log`
+### Issue: Images are not downloading
+**Solution**:
+- Check for API_KEY and CX in config.properties
+- Ensure API quota is not exhausted
+- Check internet connection
+- See logs in `logs/anki_generator.log`
 
-### Проблема: Медленное выполнение
-**Решение**: Скачивание изображений может быть медленным. Это нормально.
+### Issue: Slow execution
+**Solution**: Image downloading can be slow. This is normal.
 
-## Лицензия
+## License
 
 MIT
 
-## Поддержка
+## Support
 
-При возникновении проблем смотрите:
-1. `logs/anki_generator.log` - детальный лог выполнения
-2. Выводы в консоль (INFO, WARNING, ERROR сообщения)
+If you encounter any issues, see:
+1. `logs/anki_generator.log` - detailed execution log
+2. Console output (INFO, WARNING, ERROR messages)
 
-## Изменения в версии 2.0
+## Changes in Version 2.0
 
-✨ **Улучшения:**
-- Полный рефакторинг архитектуры на модули
-- Структурированное логирование с выводом в файл
-- Надежная обработка ошибок с продолжением при сбоях
-- Гибкая конфигурация через properties файл
-- Добавлена валидация CSV данных
-- Улучшена читаемость кода с type hints и docstrings
-- Добавлена поддержка пустых/отсутствующих медиафайлов
+✨ **Improvements:**
+- Complete architecture refactoring into modules
+- Structured logging with file output
+- Reliable error handling with ability to continue on failures
+- Flexible configuration through properties file
+- Added CSV data validation
+- Improved code readability with type hints and docstrings
+- Added support for empty/missing media files
 
-🔧 **Технические детали:**
-- Класс `MediaManager` для управления медиа
-- Класс `CardGenerator` для создания карточек
-- Класс `CardData` для хранения данных
-- Модуль `logger.py` для логирования
-- Полная переписка `anki_generator.py`
+🔧 **Technical Details:**
+- `MediaManager` class for media management
+- `CardGenerator` class for card creation
+- `CardData` class for data storage
+- `logger.py` module for logging
+- Complete rewrite of `anki_generator.py`
