@@ -5,5 +5,5 @@ vocabulary.apkg
 config.properties
 __pycache__/
 logs/
-src/resources/
+src/resources/cards.csv
 media/
