@@ -84,6 +84,53 @@ def select_csv_file(resources_dir: Path) -> Path:
             logger.warning("✗ Invalid input. Please enter a number.")
 
 
+def select_card_models() -> list:
+    """
+    Let user select which card models to use for generation.
+    
+    Returns:
+        List of selected model numbers (1-5)
+    """
+    logger.info("\n" + "=" * 60)
+    logger.info("Available card models:")
+    logger.info("=" * 60)
+    logger.info("1. EN→RU Typing")
+    logger.info("2. RU→EN Typing")
+    logger.info("3. EN→RU Choice")
+    logger.info("4. RU→EN Choice")
+    logger.info("5. RU→EN Scramble")
+    logger.info("6. All models")
+    
+    while True:
+        try:
+            choice = input("\nEnter model numbers separated by space (e.g., '1 3 5') or '6' for all: ").strip()
+            
+            if choice == "6":
+                selected_models = [1, 2, 3, 4, 5]
+                logger.info(f"✓ Selected: All models (1, 2, 3, 4, 5)")
+                return selected_models
+            
+            # Parse individual numbers
+            choices = [int(x) for x in choice.split()]
+            
+            # Validate choices
+            if not choices:
+                logger.warning("✗ No models selected. Please enter at least one number.")
+                continue
+            
+            if not all(1 <= c <= 5 for c in choices):
+                logger.warning("✗ Invalid choice. Please enter numbers between 1 and 5.")
+                continue
+            
+            # Remove duplicates and sort
+            selected_models = sorted(list(set(choices)))
+            logger.info(f"✓ Selected models: {selected_models}")
+            return selected_models
+            
+        except ValueError:
+            logger.warning("✗ Invalid input. Please enter numbers separated by space.")
+
+
 def load_cards_from_csv(csv_file_path: str) -> list:
     """
     Load flashcards from a CSV file.
@@ -197,6 +244,12 @@ def main():
         logger.error("✗ No CSV file selected. Exiting.")
         return False
     
+    # Select card models to use
+    selected_models = select_card_models()
+    if not selected_models:
+        logger.error("✗ No models selected. Exiting.")
+        return False
+    
     # Get CSV filename without extension for subfolder
     csv_name_no_ext = selected_csv.stem
     
@@ -217,6 +270,7 @@ def main():
     
     logger.info(f"Media files will be saved to: {media_dir}")
     logger.info(f"Output file: {output_file}")
+    logger.info(f"Card models to use: {len(selected_models)} model(s)")
     
     # Load flashcards from CSV
     cards_data = load_cards_from_csv(str(selected_csv))
@@ -225,9 +279,9 @@ def main():
         logger.error("✗ No flashcards to process. Exiting.")
         return False
     
-    # Initialize media manager and card generator
+    # Initialize media manager and card generator with selected models
     media_manager = MediaManager(media_dir=str(media_dir), api_key=api_key, cx=cx)
-    card_generator = CardGenerator()
+    card_generator = CardGenerator(selected_models=selected_models)
     
     all_notes = []
     media_files = []

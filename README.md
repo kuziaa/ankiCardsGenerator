@@ -1,18 +1,44 @@
 # Anki Cards Generator
 
-An automated tool for creating Anki decks with flashcards for learning English vocabulary based on a CSV file.
+An automated tool for creating Anki decks with flashcards for learning English vocabulary based on CSV files.
 
 ## Features
 
-- 📚 **5 Card Types**: Typing (EN→RU, RU→EN), Multiple Choice (EN→RU, RU→EN), Scramble (RU→EN)
+- 📚 **Flexible Card Types**: Choose from 5 types - Typing (EN→RU, RU→EN), Multiple Choice (EN→RU, RU→EN), Scramble with error counter (RU→EN)
 - 🔊 **Automatic Audio Generation** for each word using gTTS
 - 🖼️ **Image Downloads** via Google Custom Search API
-- 📊 **Flexible Configuration** through properties file
+- 📊 **Multiple Deck Support** - Create multiple vocabulary decks from different CSV files
+- 🎯 **Selective Model Generation** - Choose which card types to generate
 - 📝 **Structured Logging** with console and file output
 - ⚙️ **Modular Architecture** for easy functionality extension
 - 🛡️ **Reliable Error Handling** with ability to continue on errors
 
-## Requirements
+## Quick Start
+
+```bash
+# 1. Clone the repository
+git clone <repository-url>
+cd ankiCardsGenerator
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Configure (optional, for image downloads)
+cp config.properties.sample config.properties
+# Edit config.properties and add your Google API keys
+
+# 4. Run the generator
+cd src
+python anki_generator.py
+
+# 5. Follow the prompts:
+#    - Select a CSV file from src/resources/
+#    - Select which card models to generate (1-6)
+#    - Wait for deck generation to complete
+
+# 6. Import the APKG file
+# Your deck will be created in the results/ directory
+```
 
 - Python 3.7+
 - Dependencies listed in `requirements.txt`
@@ -26,29 +52,20 @@ An automated tool for creating Anki decks with flashcards for learning English v
 pip install -r requirements.txt
 ```
 
-3. **Configure the application**:
+3. **Configure the application** (optional, for image downloads):
 ```bash
 cp config.properties.sample config.properties
 ```
 
-4. **Edit `config.properties`** (optional for basic operation):
+4. **Edit `config.properties`** to add Google Custom Search API keys (optional):
 ```properties
-# Google Custom Search API settings (optional)
+# Google Custom Search API settings (optional for image downloads)
 API_KEY=yourGoogleCustomSearchApiKey
 CX=yourGoogleCustomSearchCx
 
 # Anki deck settings
 DECK_ID=999004
 DECK_NAME=Custom EN-RU Vocabulary Deck
-
-# Path to CSV file with cards
-CSV_FILE_PATH=src/resources/cards.csv
-
-# Path to media folder
-MEDIA_DIR=media
-
-# Path to output APKG file
-OUTPUT_FILE=vocabulary.apkg
 ```
 
 ## Data Preparation
@@ -71,7 +88,33 @@ Create a CSV file with the following required columns:
 | `incorrectRuVariant3` | Wrong variant (RU) 3 | "выразить формальную благодарность" |
 | `incorrectRuVariant4` | Wrong variant (RU) 4 | "выразить обычную признательность" |
 
-Example CSV file is located in `src/resources/cards.csv`.
+Example CSV file is located in `src/resources/cards.example.csv`. 
+
+**Note**: CSV files in `src/resources/` (except `cards.example.csv`) are not tracked by Git. Copy and rename `cards.example.csv` to create your own vocabulary files.
+
+### Creating CSV Files
+
+#### Option 1: Convert Dictionary/Table to CSV
+
+Use [ChatGPT Prompt for CSV Creation](docs/prompt_csv_creation.txt) to convert any dictionary or table into a compatible CSV file.
+
+**Quick guide:**
+1. Open the prompt file and copy it
+2. Paste into ChatGPT
+3. Replace `(Insert the table here)` with your dictionary data
+4. Copy the generated CSV output
+5. Save as `.csv` file in `src/resources/` directory
+
+#### Option 2: Extract Vocabulary from Text by CEFR Level
+
+Use [ChatGPT Prompt for Vocabulary Extraction](docs/prompt_vocabulary_extraction.txt) to extract vocabulary from any English text (books, articles, etc.) based on CEFR proficiency level.
+
+**Workflow:**
+1. Open the prompt file and copy it
+2. Paste into ChatGPT
+3. Send your chapter/text to extract vocabulary
+4. Convert the resulting table to CSV using Option 1 prompt
+5. Save in `src/resources/` directory
 
 ## Usage
 
@@ -82,9 +125,49 @@ cd src
 python anki_generator.py
 ```
 
-If you have multiple CSV files in the `src/resources/` directory, the script will prompt you to select which one to use. Media files will be automatically organized into subdirectories based on the selected CSV filename.
+### Interactive Prompts
 
-### With Google Custom Search API (for image downloads)
+The script will guide you through two selections:
+
+#### 1. Select CSV File
+
+If you have multiple CSV files in `src/resources/`:
+```
+============================================================
+Multiple CSV files found. Please select one:
+============================================================
+1. cards.csv
+2. advanced_vocabulary.csv
+3. technical_terms.csv
+
+Enter the number of your choice (1-3): 1
+✓ Selected: cards.csv
+```
+
+#### 2. Select Card Models
+
+Choose which types of flashcards to generate:
+```
+============================================================
+Available card models:
+============================================================
+1. EN→RU Typing
+2. RU→EN Typing
+3. EN→RU Choice
+4. RU→EN Choice
+5. RU→EN Scramble
+6. All models
+
+Enter model numbers separated by space (e.g., '1 3 5') or '6' for all: 1 2 3
+✓ Selected models: [1, 2, 3]
+```
+
+You can:
+- Select specific models: `1 3 5`
+- Select all models: `6`
+- Select individual model: `1`
+
+### With Google Custom Search API (for Image Downloads)
 
 1. **Create Google Custom Search API key**:
    - Go to https://programmablesearchengine.google.com/
@@ -103,6 +186,43 @@ cd src
 python anki_generator.py
 ```
 
+## Card Types Explained
+
+The project supports creating up to 5 different types of flashcards per word:
+
+### 1. EN→RU Typing
+- **What**: Translate English word/phrase to Russian by typing
+- **Use case**: Active production of Russian translation
+- **Format**: Shows English word, you type Russian translation
+
+### 2. RU→EN Typing
+- **What**: Translate Russian to English by typing
+- **Use case**: Active production of English translation
+- **Format**: Shows Russian word, you type English translation
+
+### 3. EN→RU Choice
+- **What**: Select correct Russian translation from 4 options
+- **Use case**: Passive recognition, multiple choice practice
+- **Format**: Shows English word with 4 Russian options
+
+### 4. RU→EN Choice
+- **What**: Select correct English translation from 4 options
+- **Use case**: Passive recognition, multiple choice practice
+- **Format**: Shows Russian word with 4 English options
+
+### 5. RU→EN Scramble ⭐ Special Feature
+- **What**: Arrange shuffled letters to spell the English word
+- **Use case**: Active spelling and word formation practice
+- **Special Features**:
+  - Buttons with shuffled letters
+  - Click letters to spell the word (in correct order)
+  - Type the word with keyboard validation
+  - **Error Counter** - tracks mistakes (red counter)
+  - Errors increment when:
+    - Clicking wrong letter button
+    - Typing incorrect character on keyboard
+- **Format**: Shows Russian word, shuffle letter buttons below
+
 ## Multiple Deck Support
 
 The project supports working with multiple CSV files for different vocabulary sets:
@@ -110,7 +230,7 @@ The project supports working with multiple CSV files for different vocabulary se
 - **Add multiple CSV files** to `src/resources/` directory
 - **Run the script** and select which CSV file to process
 - **Media files** are automatically organized in subdirectories under `media/` based on CSV filename
-- **APKG output files** are saved in `results/` directory and named after the CSV file for easy identification
+- **APKG output files** are saved in `results/` directory and named after the CSV file
 
 Example structure:
 ```
@@ -128,8 +248,8 @@ ankiCardsGenerator/
 │
 └── media/
     ├── cards/                      # Media for cards.csv
-    │   ├── *.mp3
-    │   └── *.jpg
+    │   ├── *.mp3                   # Audio files
+    │   └── *.jpg                   # Images
     ├── advanced_vocabulary/        # Media for advanced_vocabulary.csv
     │   ├── *.mp3
     │   └── *.jpg
@@ -146,35 +266,32 @@ ankiCardsGenerator/
 ├── config.properties.sample       # Configuration example
 ├── requirements.txt               # Dependencies
 ├── README.md                      # Documentation
+├── docs/                          # Documentation and prompts
+│   ├── prompt_csv_creation.txt
+│   └── prompt_vocabulary_extraction.txt
 ├── src/
-│   ├── anki_generator.py         # Main script
-│   ├── models/                   # Card models
+│   ├── anki_generator.py         # Main script with CSV and model selection
+│   ├── models/                   # Card models (Anki templates)
 │   │   ├── en_ru_typing_model.py
 │   │   ├── ru_en_typing_model.py
 │   │   ├── en_ru_choice_model.py
 │   │   ├── ru_en_choice_model.py
-│   │   └── ru_en_scramble_model.py
+│   │   └── ru_en_scramble_model.py (includes error counter)
 │   ├── utils/                    # Utility modules
 │   │   ├── logger.py             # Logging
 │   │   ├── properties_util.py    # Configuration loading
 │   │   ├── media_manager.py      # Media management
-│   │   └── card_generator.py     # Card generation
+│   │   └── card_generator.py     # Card generation with model selection
 │   ├── resources/
-│   │   ├── cards.csv             # CSV with source data (deck 1)
-│   │   ├── advanced_vocabulary.csv # CSV with source data (deck 2, optional)
-│   │   └── ...                   # Additional CSV files (optional)
+│   │   ├── cards.example.csv     # Example CSV file (template for your data)
+│   │   └── ...                   # Your CSV files (not tracked by Git)
 │   └── media/                    # Generated media files (not tracked)
 │       ├── cards/                # Media for cards.csv
-│       │   ├── *.mp3             # Audio files
-│       │   └── *.jpg             # Images
-│       ├── advanced_vocabulary/  # Media for advanced_vocabulary.csv
 │       │   ├── *.mp3
 │       │   └── *.jpg
 │       └── ...
 ├── results/                      # Generated APKG decks (not tracked)
-│   ├── cards.apkg
-│   ├── advanced_vocabulary.apkg
-│   └── ...
+│   └── *.apkg
 └── logs/                         # Execution logs (not tracked)
     └── anki_generator.log
 ```
@@ -187,7 +304,23 @@ After successful execution, the following will be created:
 - **media/[csv_filename]/** - Folder with audio files (.mp3) and images (.jpg) organized by CSV file
 - **logs/anki_generator.log** - Execution log with all details
 
-Each CSV file gets its own APKG deck in the `results/` directory and corresponding media subdirectory, allowing you to manage multiple vocabulary sets independently.
+Example:
+```
+results/
+├── cards.apkg
+├── advanced_vocabulary.apkg
+└── technical_terms.apkg
+
+media/
+├── cards/
+│   ├── express_my_deep_gratitude.mp3
+│   ├── express_my_deep_gratitude.jpg
+│   └── ...
+├── advanced_vocabulary/
+│   └── ...
+└── technical_terms/
+    └── ...
+```
 
 ## Error Handling
 
@@ -200,13 +333,13 @@ The script is designed with reliability in mind:
 
 ## Card Types Created
 
-For each word, 5 cards are created:
+The project supports creating up to 5 different types of flashcards per word. You can choose which types to generate:
 
 1. **EN→RU Typing** - Write the Russian translation of the English word
 2. **RU→EN Typing** - Write the English translation of the Russian word
 3. **EN→RU Choice** - Select the correct Russian translation from 4 options
 4. **RU→EN Choice** - Select the correct English translation from 4 options
-5. **RU→EN Scramble** - Arrange the letters of the English word in the correct order
+5. **RU→EN Scramble** - Arrange the letters of the English word in the correct order (includes error counter)
 
 Each card contains:
 - 🔊 Audio pronunciation (if API keys are configured)
@@ -218,16 +351,19 @@ Each card contains:
 ### Adding a New Card Type
 
 1. Create a new model file in `src/models/your_model.py`
-2. Define the card structure in genanki.Model
-3. Add card creation to `card_generator.py`
-4. Update `anki_generator.py` to use the new card
+2. Define the structure in genanki.Model
+3. Add import and instantiation in `card_generator.py`
+4. Add creation logic in `CardGenerator.create_cards()` method
+5. Update `anki_generator.py` to include new model number in `select_card_models()`
 
 ### Changing Card Design
 
 Edit the corresponding files in `src/models/`:
-- Change HTML templates in `qfmt` (front) and `afmt` (back)
+- Modify HTML templates in `qfmt` (front side) and `afmt` (back side)
 - Update CSS in the `css` block
 - Edit the field list in `fields`
+
+Example: To add a new visual element to the Scramble card, edit `ru_en_scramble_model.py`
 
 ## Troubleshooting
 
@@ -245,7 +381,10 @@ Edit the corresponding files in `src/models/`:
 - See logs in `logs/anki_generator.log`
 
 ### Issue: Slow execution
-**Solution**: Image downloading can be slow. This is normal.
+**Solution**: Image downloading can be slow. This is normal. One image usually takes 1-3 seconds.
+
+### Issue: CSV file not found
+**Solution**: Make sure your CSV file is placed in `src/resources/` directory with `.csv` extension
 
 ## License
 
@@ -253,20 +392,50 @@ MIT
 
 ## Support
 
-If you encounter any issues, see:
-1. `logs/anki_generator.log` - detailed execution log
-2. Console output (INFO, WARNING, ERROR messages)
+If you encounter any issues:
 
-## Changes in Version 2.0
+1. Check `logs/anki_generator.log` for detailed error messages
+2. Review console output (INFO, WARNING, ERROR messages)
+3. Check the Troubleshooting section above
+4. Ensure all dependencies are installed: `pip install -r requirements.txt`
 
+## Contributing
+
+Feel free to extend functionality by:
+- Adding new card models
+- Improving existing templates
+- Creating new ChatGPT prompts for data extraction
+- Optimizing media processing
+
+---
+
+**Happy learning! 🎓**
+
+## Recent Changes
+
+### Version 2.1
+✨ **New Features:**
+- Selective card model generation - choose which types to create
+- Multiple CSV file selection on startup
+- Media and APKG organization by CSV filename
+- Results directory for organized output
+- Error counter for Scramble cards
+- Complete README restructuring with separate prompt files
+
+🔧 **Technical Details:**
+- `CardGenerator` now accepts `selected_models` parameter
+- `select_card_models()` function for interactive model selection
+- Media files organized in subdirectories
+- APKG files saved to `results/` directory
+
+### Version 2.0
 ✨ **Improvements:**
 - Complete architecture refactoring into modules
 - Structured logging with file output
-- Reliable error handling with ability to continue on failures
+- Reliable error handling with continue-on-error
 - Flexible configuration through properties file
-- Added CSV data validation
+- CSV data validation
 - Improved code readability with type hints and docstrings
-- Added support for empty/missing media files
 
 🔧 **Technical Details:**
 - `MediaManager` class for media management
