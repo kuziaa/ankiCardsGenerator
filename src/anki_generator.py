@@ -24,6 +24,66 @@ from utils.card_generator import CardGenerator, CardData, create_deck_from_cards
 logger = setup_logger(__name__)
 
 
+def find_csv_files(resources_dir: Path) -> list:
+    """
+    Find all CSV files in the resources directory.
+    
+    Args:
+        resources_dir: Path to resources directory
+        
+    Returns:
+        List of CSV file paths sorted alphabetically
+    """
+    if not resources_dir.exists():
+        return []
+    
+    csv_files = sorted(resources_dir.glob('*.csv'))
+    return csv_files
+
+
+def select_csv_file(resources_dir: Path) -> Path:
+    """
+    Let user select a CSV file if multiple files exist.
+    
+    Args:
+        resources_dir: Path to resources directory
+        
+    Returns:
+        Selected CSV file path
+    """
+    csv_files = find_csv_files(resources_dir)
+    
+    if not csv_files:
+        logger.error("✗ No CSV files found in resources directory!")
+        return None
+    
+    if len(csv_files) == 1:
+        logger.info(f"✓ Using CSV file: {csv_files[0].name}")
+        return csv_files[0]
+    
+    # Multiple CSV files - ask user to choose
+    logger.info("\n" + "=" * 60)
+    logger.info("Multiple CSV files found. Please select one:")
+    logger.info("=" * 60)
+    
+    for idx, csv_file in enumerate(csv_files, 1):
+        logger.info(f"{idx}. {csv_file.name}")
+    
+    while True:
+        try:
+            choice = input("\nEnter the number of your choice (1-{}): ".format(len(csv_files)))
+            choice_num = int(choice)
+            
+            if 1 <= choice_num <= len(csv_files):
+                selected_file = csv_files[choice_num - 1]
+                logger.info(f"✓ Selected: {selected_file.name}")
+                return selected_file
+            else:
+                logger.warning(f"✗ Invalid choice. Please enter a number between 1 and {len(csv_files)}")
+        except ValueError:
+            logger.warning("✗ Invalid input. Please enter a number.")
+
+
 def load_cards_from_csv(csv_file_path: str) -> list:
     """
     Load flashcards from a CSV file.
@@ -128,12 +188,38 @@ def main():
     
     # Transform paths relative to project root directory
     root_path = Path(__file__).parent.parent
-    csv_file_path = root_path / properties.get('CSV_FILE_PATH', 'src/resources/cards.csv')
-    media_dir = root_path / properties.get('MEDIA_DIR', 'media')
-    output_file = root_path / properties.get('OUTPUT_FILE', 'vocabulary.apkg')
+    resources_dir = root_path / 'src' / 'resources'
+    media_root_dir = root_path / 'media'
+    
+    # Select CSV file (let user choose if multiple exist)
+    selected_csv = select_csv_file(resources_dir)
+    if not selected_csv:
+        logger.error("✗ No CSV file selected. Exiting.")
+        return False
+    
+    # Get CSV filename without extension for subfolder
+    csv_name_no_ext = selected_csv.stem
+    
+    # Create media subdirectory for this CSV file
+    media_dir = media_root_dir / csv_name_no_ext
+    media_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Create results directory for output APKG files
+    results_dir = root_path / 'results'
+    results_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Set output file name based on CSV file name
+    output_file = results_dir / f"{csv_name_no_ext}.apkg"
+    
+    # Update deck name to include CSV file name
+    if deck_name == 'Custom EN-RU Vocabulary Deck':
+        deck_name = f"Custom EN-RU Vocabulary Deck - {csv_name_no_ext}"
+    
+    logger.info(f"Media files will be saved to: {media_dir}")
+    logger.info(f"Output file: {output_file}")
     
     # Load flashcards from CSV
-    cards_data = load_cards_from_csv(str(csv_file_path))
+    cards_data = load_cards_from_csv(str(selected_csv))
     
     if not cards_data:
         logger.error("✗ No flashcards to process. Exiting.")
@@ -213,6 +299,7 @@ def main():
     logger.info("✓ Process completed successfully!")
     logger.info(f"  Total flashcards created: {len(all_notes)}")
     logger.info(f"  File saved: {output_file}")
+    logger.info(f"  Media directory: {media_dir}")
     logger.info("=" * 60)
     
     return True
