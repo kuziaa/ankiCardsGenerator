@@ -82,6 +82,8 @@ cd src
 python anki_generator.py
 ```
 
+If you have multiple CSV files in the `src/resources/` directory, the script will prompt you to select which one to use. Media files will be automatically organized into subdirectories based on the selected CSV filename.
+
 ### With Google Custom Search API (for image downloads)
 
 1. **Create Google Custom Search API key**:
@@ -99,6 +101,41 @@ CX=your_actual_cx
 ```bash
 cd src
 python anki_generator.py
+```
+
+## Multiple Deck Support
+
+The project supports working with multiple CSV files for different vocabulary sets:
+
+- **Add multiple CSV files** to `src/resources/` directory
+- **Run the script** and select which CSV file to process
+- **Media files** are automatically organized in subdirectories under `media/` based on CSV filename
+- **APKG output files** are saved in `results/` directory and named after the CSV file for easy identification
+
+Example structure:
+```
+ankiCardsGenerator/
+├── src/
+│   ├── resources/
+│   │   ├── cards.csv              # Deck 1
+│   │   ├── advanced_vocabulary.csv # Deck 2
+│   │   └── technical_terms.csv     # Deck 3
+│
+├── results/                        # Output APKG files
+│   ├── cards.apkg                  # Generated from cards.csv
+│   ├── advanced_vocabulary.apkg     # Generated from advanced_vocabulary.csv
+│   └── technical_terms.apkg         # Generated from technical_terms.csv
+│
+└── media/
+    ├── cards/                      # Media for cards.csv
+    │   ├── *.mp3
+    │   └── *.jpg
+    ├── advanced_vocabulary/        # Media for advanced_vocabulary.csv
+    │   ├── *.mp3
+    │   └── *.jpg
+    └── technical_terms/            # Media for technical_terms.csv
+        ├── *.mp3
+        └── *.jpg
 ```
 
 ## Project Structure
@@ -123,10 +160,21 @@ ankiCardsGenerator/
 │   │   ├── media_manager.py      # Media management
 │   │   └── card_generator.py     # Card generation
 │   ├── resources/
-│   │   └── cards.csv             # CSV with source data
+│   │   ├── cards.csv             # CSV with source data (deck 1)
+│   │   ├── advanced_vocabulary.csv # CSV with source data (deck 2, optional)
+│   │   └── ...                   # Additional CSV files (optional)
 │   └── media/                    # Generated media files (not tracked)
-│       ├── *.mp3                 # Audio files
-│       └── *.jpg                 # Images
+│       ├── cards/                # Media for cards.csv
+│       │   ├── *.mp3             # Audio files
+│       │   └── *.jpg             # Images
+│       ├── advanced_vocabulary/  # Media for advanced_vocabulary.csv
+│       │   ├── *.mp3
+│       │   └── *.jpg
+│       └── ...
+├── results/                      # Generated APKG decks (not tracked)
+│   ├── cards.apkg
+│   ├── advanced_vocabulary.apkg
+│   └── ...
 └── logs/                         # Execution logs (not tracked)
     └── anki_generator.log
 ```
@@ -135,9 +183,11 @@ ankiCardsGenerator/
 
 After successful execution, the following will be created:
 
-- **vocabulary.apkg** - Ready Anki deck for import
-- **media/** - Folder with audio files (.mp3) and images (.jpg)
+- **results/[csv_filename].apkg** - Ready Anki deck for import (saved in results directory)
+- **media/[csv_filename]/** - Folder with audio files (.mp3) and images (.jpg) organized by CSV file
 - **logs/anki_generator.log** - Execution log with all details
+
+Each CSV file gets its own APKG deck in the `results/` directory and corresponding media subdirectory, allowing you to manage multiple vocabulary sets independently.
 
 ## Error Handling
 
