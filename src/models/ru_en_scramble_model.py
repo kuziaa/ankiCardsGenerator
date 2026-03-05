@@ -63,44 +63,18 @@ model = genanki.Model(
                     return char === expectedChar;
                 }
                 
-                // Функция для обновления состояния кнопок при вводе с клавиатуры
+                // Функция для обновления состояния кнопок (больше не нужна, но оставляем для совместимости)
                 function updateButtonStates() {
-                    const input = document.querySelector('#answer-field input');
-                    const correctWord = "{{English}}";
-                    if (!input) return;
-                    
-                    const currentInput = input.value;
-                    const buttons = document.querySelectorAll('.letter-btn');
-                    
-                    // Сначала сбросим все кнопки до активного состояния
-                    buttons.forEach(button => {
-                        if (button.classList.contains('space-btn')) {
-                            button.style.backgroundColor = '#FF9800';
-                        } else {
-                            button.style.backgroundColor = '#4CAF50';
-                        }
-                        button.disabled = false;
-                    });
-                    
-                    // Для каждой буквы в введенном тексте находим и отмечаем первую доступную кнопку
-                    for (let i = 0; i < currentInput.length; i++) {
-                        const char = currentInput[i];
-                        const availableButton = Array.from(buttons).find(button => {
-                            const buttonChar = button.textContent === '␣' ? ' ' : button.textContent;
-                            return buttonChar === char && !button.disabled;
-                        });
-                        
-                        if (availableButton) {
-                            availableButton.style.backgroundColor = '#888';
-                            availableButton.disabled = true;
-                        }
-                    }
+                    // Эта функция больше не используется - логика отмечания кнопок
+                    // реализована в click handler и input event handler
                 }
                 
                 // Функция для блокировки неправильного ввода с клавиатуры
                 function setupInputValidation() {
                     const input = document.querySelector('#answer-field input');
                     if (!input) return;
+                    
+                    let isKeyboardInput = false;  // Флаг для отслеживания источника ввода
                     
                     input.addEventListener('keydown', function(e) {
                         // Разрешаем служебные клавиши (Backspace, Tab, стрелки и т.д.)
@@ -115,12 +89,37 @@ model = genanki.Model(
                         // Если вводимый символ не соответствует ожидаемому, блокируем ввод
                         if (!nextChar || e.key !== nextChar) {
                             e.preventDefault();
+                        } else {
+                            // Отмечаем что ввод с клавиатуры
+                            isKeyboardInput = true;
                         }
                     });
                     
-                    // Обработчик для обновления состояния кнопок при вводе
+                    // Обработчик для отмечания кнопки при вводе с клавиатуры
                     input.addEventListener('input', function(e) {
-                        updateButtonStates();
+                        // Обработка ТОЛЬКО при вводе с клавиатуры, не при клике мышкой
+                        if (isKeyboardInput) {
+                            // Отмечаем последнюю введённую букву
+                            const buttons = document.querySelectorAll('.letter-btn');
+                            const lastChar = this.value[this.value.length - 1];
+                            
+                            if (lastChar) {
+                                // Находим первую НЕ отмеченную кнопку с этой буквой и отмечаем её
+                                let found = false;
+                                buttons.forEach(button => {
+                                    if (!found) {
+                                        const buttonChar = button.textContent === '␣' ? ' ' : button.textContent;
+                                        if (buttonChar === lastChar && !button.disabled) {
+                                            // Отмечаем первую доступную кнопку с этой буквой
+                                            button.style.backgroundColor = '#888';
+                                            button.disabled = true;
+                                            found = true;
+                                        }
+                                    }
+                                });
+                            }
+                            isKeyboardInput = false;
+                        }
                     });
                 }
                 
@@ -171,11 +170,12 @@ model = genanki.Model(
                                     // Добавляем символ к текущему значению
                                     // Для пробела добавляем обычный пробел, для остальных - символ как есть
                                     input.value += (char === ' ') ? ' ' : char;
-                                    // Активируем событие для Anki
-                                    input.dispatchEvent(new Event('input', { bubbles: true }));
                                     
-                                    // Обновляем состояние кнопок
-                                    updateButtonStates();
+                                    // Отмечаем нажатую кнопку серым цветом
+                                    this.style.backgroundColor = '#888';
+                                    this.disabled = true;
+                                    
+                                    // НЕ вызываем dispatchEvent - это предотвращает двойное отмечание
                                 } 
                             }
                         });
@@ -273,7 +273,7 @@ model = genanki.Model(
             flex-wrap: wrap;
         }
         
-        /* Базовые стили для кнопок букв */
+        /* Стили для кнопок букв */
         .letter-btn {
             color: black;
             font-weight: bold;
@@ -285,16 +285,7 @@ model = genanki.Model(
             border-radius: 5px;
             min-width: 40px;
             transition: all 0.3s;
-        }
-        
-        /* Стили для обычных букв */
-        .letter-btn:not(.space-btn) {
             background-color: #4CAF50;
-        }
-        
-        /* Стили для кнопки пробела */
-        .letter-btn.space-btn {
-            background-color: #FF9800;
         }
         
         /* Стили для кнопок букв при наведении */
