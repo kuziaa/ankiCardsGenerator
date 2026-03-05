@@ -1,5 +1,8 @@
 .idea/
 .git/
 vocabulary_typein.apkg
+vocabulary.apkg
 config.properties
 __pycache__/
+logs/
+src/resources/
