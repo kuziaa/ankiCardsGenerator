@@ -6,3 +6,4 @@ config.properties
 __pycache__/
 logs/
 src/resources/
+media/
