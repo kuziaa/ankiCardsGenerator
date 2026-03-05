@@ -34,6 +34,11 @@ model = genanki.Model(
                     <div id="letters-container" class="letters-container">
                         <!-- Letters will be added by script -->
                     </div>
+                    
+                    <!-- Error counter -->
+                    <div id="error-counter" class="error-counter">
+                        Errors: <span id="error-count">0</span>
+                    </div>
                 </div>
                 
                 <script>
@@ -69,6 +74,14 @@ model = genanki.Model(
                     // is implemented in click handler and input event handler
                 }
                 
+                // Function to increment error counter
+                function incrementErrorCounter() {
+                    const errorCountElement = document.getElementById('error-count');
+                    if (errorCountElement) {
+                        errorCountElement.textContent = parseInt(errorCountElement.textContent) + 1;
+                    }
+                }
+                
                 // Function to block incorrect keyboard input
                 function setupInputValidation() {
                     const input = document.querySelector('#answer-field input');
@@ -86,9 +99,11 @@ model = genanki.Model(
                         const currentValue = this.value;
                         const nextChar = correctWord[currentValue.length];
                         
-                        // If input char doesn't match expected, block input
+                        // If input char doesn't match expected, block input and increment error counter
                         if (!nextChar || e.key !== nextChar) {
                             e.preventDefault();
+                            // Increment error counter on wrong keyboard input
+                            incrementErrorCounter();
                         } else {
                             // Mark that input is from keyboard
                             isKeyboardInput = true;
@@ -176,7 +191,10 @@ model = genanki.Model(
                                     this.disabled = true;
                                     
                                     // Do NOT call dispatchEvent - this prevents double marking
-                                } 
+                                } else {
+                                    // Increment error counter on wrong button click
+                                    incrementErrorCounter();
+                                }
                             }
                         });
                         
@@ -271,6 +289,18 @@ model = genanki.Model(
             display: flex;
             justify-content: center;
             flex-wrap: wrap;
+        }
+        
+        /* Error counter styling */
+        .error-counter {
+            margin: 15px 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+        
+        #error-count {
+            color: red;
+            font-size: 20px;
         }
         
         /* Styles for letter buttons */
