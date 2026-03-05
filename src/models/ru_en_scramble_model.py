@@ -72,13 +72,9 @@ model = genanki.Model(
                     const currentInput = input.value;
                     const buttons = document.querySelectorAll('.letter-btn');
                     
-                    // Сначала сбросим все кнопки до активного состояния
+                    // Сначала сбросим все кнопки до активного состояния (зелёные по умолчанию)
                     buttons.forEach(button => {
-                        if (button.classList.contains('space-btn')) {
-                            button.style.backgroundColor = '#FF9800';
-                        } else {
-                            button.style.backgroundColor = '#4CAF50';
-                        }
+                        button.style.backgroundColor = '#4CAF50';
                         button.disabled = false;
                     });
                     
@@ -273,7 +269,7 @@ model = genanki.Model(
             flex-wrap: wrap;
         }
         
-        /* Базовые стили для кнопок букв */
+        /* Стили для кнопок букв */
         .letter-btn {
             color: black;
             font-weight: bold;
@@ -285,16 +281,7 @@ model = genanki.Model(
             border-radius: 5px;
             min-width: 40px;
             transition: all 0.3s;
-        }
-        
-        /* Стили для обычных букв */
-        .letter-btn:not(.space-btn) {
             background-color: #4CAF50;
-        }
-        
-        /* Стили для кнопки пробела */
-        .letter-btn.space-btn {
-            background-color: #FF9800;
         }
         
         /* Стили для кнопок букв при наведении */
