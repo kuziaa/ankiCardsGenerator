@@ -1,227 +1,232 @@
-import genanki
-from gtts import gTTS
-import os
-import requests
-from PIL import Image
-from models import en_ru_typing_model
-from models import ru_en_typing_model
-from models import en_ru_choice_model
-from models import ru_en_choice_model
-from models import ru_en_scramble_model
-import urllib.parse
-import io
+#!/usr/bin/env python3
+"""
+Anki Cards Generator - Генератор карточек для изучения английских слов
+
+Этот скрипт создает Anki деку с карточками из CSV файла, включая:
+- Генерацию аудио для каждого слова
+- Скачивание изображений через Google Custom Search
+- Создание 5 типов карточек (typing, choice, scramble)
+"""
+
 import csv
-from utils import properties_util
 import random
+import sys
+from pathlib import Path
 
-# ----------------------- ЧТЕНИЕ НАСТРОЕК ИЗ .properties ФАЙЛА ----------------------------
-properties = properties_util.load_properties()
+import genanki
 
-# Получаем API ключи из настроек
-API_KEY = properties.get('API_KEY', '')
-CX = properties.get('CX', '')
+from utils.logger import setup_logger
+from utils.properties_util import load_properties
+from utils.media_manager import MediaManager
+from utils.card_generator import CardGenerator, CardData, create_deck_from_cards
 
-# Проверяем, что ключи загружены
-if not API_KEY or not CX:
-    print("Предупреждение: API_KEY или CX не найдены в config.properties файле!")
-    print("Скачивание изображений будет пропущено.")
+# Инициализируем логгер
+logger = setup_logger(__name__)
 
-# ----------------------- ЧТЕНИЕ ДАННЫХ ИЗ CSV ----------------------------
-def load_cards_from_csv(csv_file_path='src/resources/cards.csv'):
+
+def load_cards_from_csv(csv_file_path: str) -> list:
+    """
+    Загружает карточки из CSV файла.
+    
+    Args:
+        csv_file_path: Путь к CSV файлу
+        
+    Returns:
+        Список объектов CardData
+    """
     cards = []
+    
+    if not Path(csv_file_path).exists():
+        logger.error(f"✗ Файл {csv_file_path} не найден!")
+        return cards
+    
     try:
         with open(csv_file_path, 'r', encoding='utf-8') as csvfile:
             reader = csv.DictReader(csvfile)
-            for row in reader:
-                # Извлекаем данные из строки CSV
-                english = row['english']
-                russian = row['russian'] 
-                example = row['example']
-                incorrectEnVariant1 = row['incorrectEnVariant1']
-                incorrectEnVariant2 = row['incorrectEnVariant2']
-                incorrectEnVariant3 = row['incorrectEnVariant3']
-                incorrectEnVariant4 = row['incorrectEnVariant4']
-                incorrectRuVariant1 = row['incorrectRuVariant1']
-                incorrectRuVariant2 = row['incorrectRuVariant2']
-                incorrectRuVariant3 = row['incorrectRuVariant3']
-                incorrectRuVariant4 = row['incorrectRuVariant4']
-                
-                cards.append((
-                    english, russian, example, 
-                    incorrectEnVariant1, incorrectEnVariant2, incorrectEnVariant3, incorrectEnVariant4,
-                    incorrectRuVariant1, incorrectRuVariant2, incorrectRuVariant3, incorrectRuVariant4
-                ))
-                
-        print(f"Успешно загружено {len(cards)} карточек из {csv_file_path}")
+            
+            # Проверяем наличие необходимых столбцов
+            required_columns = {
+                'english', 'russian', 'example',
+                'incorrectEnVariant1', 'incorrectEnVariant2', 
+                'incorrectEnVariant3', 'incorrectEnVariant4',
+                'incorrectRuVariant1', 'incorrectRuVariant2',
+                'incorrectRuVariant3', 'incorrectRuVariant4'
+            }
+            
+            if reader.fieldnames is None:
+                logger.error("CSV файл пуст или повреждён!")
+                return cards
+            
+            if not required_columns.issubset(set(reader.fieldnames)):
+                missing = required_columns - set(reader.fieldnames)
+                logger.error(f"В CSV файле отсутствуют столбцы: {missing}")
+                return cards
+            
+            for idx, row in enumerate(reader, 1):
+                try:
+                    card = CardData(
+                        english=row['english'].strip(),
+                        russian=row['russian'].strip(),
+                        example=row['example'].strip(),
+                        incorrect_en=[
+                            row['incorrectEnVariant1'].strip(),
+                            row['incorrectEnVariant2'].strip(),
+                            row['incorrectEnVariant3'].strip(),
+                            row['incorrectEnVariant4'].strip(),
+                        ],
+                        incorrect_ru=[
+                            row['incorrectRuVariant1'].strip(),
+                            row['incorrectRuVariant2'].strip(),
+                            row['incorrectRuVariant3'].strip(),
+                            row['incorrectRuVariant4'].strip(),
+                        ]
+                    )
+                    
+                    # Валидация данных
+                    if not card.english or not card.russian:
+                        logger.warning(f"Строка {idx}: пропущена (отсутствует английское или русское слово)")
+                        continue
+                    
+                    cards.append(card)
+                    
+                except KeyError as e:
+                    logger.warning(f"Строка {idx}: ошибка при чтении столбца {e}")
+                    continue
+                except Exception as e:
+                    logger.warning(f"Строка {idx}: непредвиденная ошибка {e}")
+                    continue
+        
+        logger.info(f"✓ Успешно загружено {len(cards)} карточек из {csv_file_path}")
         return cards
         
-    except FileNotFoundError:
-        print(f"Ошибка: Файл {csv_file_path} не найден!")
-        return []
-    except KeyError as e:
-        print(f"Ошибка: В CSV файле отсутствует необходимый столбец: {e}")
-        return []
     except Exception as e:
-        print(f"Ошибка при чтении CSV файла: {e}")
+        logger.error(f"✗ Ошибка при чтении CSV файла: {e}")
         return []
 
-# Загружаем карточки из CSV
-cards = load_cards_from_csv()
 
-# ----------------------- MODELS ----------------------------
-model_en_ru_typing = en_ru_typing_model.model
-model_ru_en_typing = ru_en_typing_model.model
-model_en_ru_choice = en_ru_choice_model.model
-model_ru_en_choice = ru_en_choice_model.model
-model_ru_en_scramble = ru_en_scramble_model.model
-
-
-# ----------------------- Функция для скачивания картинок ----------------------------
-def download_image(search_term, safe_word, max_attempts=5):
-    # Если API ключи не загружены, пропускаем скачивание
-    if not API_KEY or not CX:
-        print(f"Пропуск скачивания картинки для {search_term} (отсутствуют API ключи)")
-        return None
-        
-    image_path = f"media/{safe_word}.jpg"
+def main():
+    """Основная функция для генерации Anki деки."""
     
-    # Если картинка уже существует, не скачиваем повторно
-    if os.path.exists(image_path):
-        return image_path
+    logger.info("=" * 60)
+    logger.info("Запуск Anki Cards Generator")
+    logger.info("=" * 60)
     
+    # Загружаем настройки
     try:
-        # Поиск картинок через Google Custom Search (ищем несколько результатов)
-        url = f"https://www.googleapis.com/customsearch/v1?q={urllib.parse.quote(search_term)}&searchType=image&key={API_KEY}&cx={CX}&num={max_attempts}"
-        print(f'Поиск картинок для: {search_term}')
-        response = requests.get(url)
-        results = response.json()
-        
-        if 'items' in results and len(results['items']) > 0:
-            # Пытаемся скачать каждую картинку по очереди, пока не найдем рабочую
-            for i, item in enumerate(results['items']):
-                if i >= max_attempts:
-                    break
-                    
-                image_url = item['link']
-                print(f"Попытка {i+1}/{max_attempts}: {image_url}")
-                
-                try:
-                    # Скачиваем картинку
-                    img_response = requests.get(image_url, timeout=10)
-                    img_response.raise_for_status()
-                    
-                    # Пытаемся открыть изображение с помощью PIL для проверки
-                    image = Image.open(io.BytesIO(img_response.content))
-                    
-                    # Проверяем, что это действительно изображение
-                    image.verify()
-                    
-                    # Сбрасываем указатель файла и снова открываем для обработки
-                    image = Image.open(io.BytesIO(img_response.content))
-                    
-                    # Конвертируем в RGB если необходимо (для JPEG)
-                    if image.mode in ('RGBA', 'P', 'LA'):
-                        image = image.convert('RGB')
-                    
-                    # Сохраняем картинку
-                    image.save(image_path, 'JPEG', quality=85)
-                    print(f"✓ Успешно скачана картинка для: {search_term}")
-                    return image_path
-                    
-                except Exception as e:
-                    print(f"✗ Ошибка при обработке картинки {i+1} для {search_term}: {e}")
-                    continue
-            
-            # Если все попытки неудачны
-            print(f"Не удалось скачать ни одну картинку для: {search_term}")
-            return None
-            
-        else:
-            print(f"Не найдены картинки для: {search_term}")
-            return None
-            
+        # Ищем config в корневой папке проекта
+        config_path = Path(__file__).parent.parent / 'config.properties'
+        properties = load_properties(str(config_path))
     except Exception as e:
-        print(f"Ошибка при поиске картинок для {search_term}: {e}")
-        return None
-
-# ----------------------- CREATE DECK ----------------------------
-
-deck = genanki.Deck(999004, "Custom EN-RU Vocabulary Deck Type-In test1")
-
-if not os.path.exists("media"):
-    os.makedirs("media")
-
-media_files = []
-all_notes = []  # Список для сбора всех заметок перед перемешиванием
-
-for word, translation, example, incorrectEnVariant1, incorrectEnVariant2, incorrectEnVariant3, incorrectEnVariant4, incorrectRuVariant1, incorrectRuVariant2, incorrectRuVariant3, incorrectRuVariant4 in cards:
-    safe = word.replace(" ", "_")
-    tts_path = f"media/{safe}.mp3"
-
-    if not os.path.exists(tts_path):
-        tts = gTTS(text=word, lang="en")
-        tts.save(tts_path)
-
-    media_files.append(tts_path)
-
-    # Скачиваем картинку для слова
-    image_path = download_image(word, safe)
-    image_field = f'<img src="{safe}.jpg">' if image_path else ""
+        logger.error(f"✗ Не удалось загрузить настройки: {e}")
+        return False
     
-    # Добавляем картинку в media_files если она была скачана
-    if image_path:
-        media_files.append(image_path)
+    # Получаем параметры из конфига
+    api_key = properties.get('API_KEY', '')
+    cx = properties.get('CX', '')
+    deck_id = int(properties.get('DECK_ID', '999004'))
+    deck_name = properties.get('DECK_NAME', 'Custom EN-RU Vocabulary Deck')
+    
+    # Преобразуем пути относительно корневой папки проекта
+    root_path = Path(__file__).parent.parent
+    csv_file_path = root_path / properties.get('CSV_FILE_PATH', 'src/resources/cards.csv')
+    media_dir = root_path / properties.get('MEDIA_DIR', 'media')
+    output_file = root_path / properties.get('OUTPUT_FILE', 'vocabulary.apkg')
+    
+    # Загружаем карточки из CSV
+    cards_data = load_cards_from_csv(str(csv_file_path))
+    
+    if not cards_data:
+        logger.error("✗ Нет карточек для обработки. Выход.")
+        return False
+    
+    # Инициализируем менеджер медиа и генератор карточек
+    media_manager = MediaManager(media_dir=str(media_dir), api_key=api_key, cx=cx)
+    card_generator = CardGenerator()
+    
+    all_notes = []
+    media_files = []
+    
+    logger.info(f"Обработка {len(cards_data)} слов...")
+    
+    # Обрабатываем каждое слово
+    for idx, card_data in enumerate(cards_data, 1):
+        try:
+            logger.info(f"[{idx}/{len(cards_data)}] Обработка: {card_data.english}")
+            
+            # Генерируем аудио
+            audio_path = media_manager.generate_audio(
+                text=card_data.english,
+                safe_filename=card_data.safe_filename
+            )
+            if audio_path:
+                media_files.append(audio_path)
+            
+            # Скачиваем изображение
+            image_path = media_manager.download_image(
+                search_term=card_data.english,
+                safe_filename=card_data.safe_filename
+            )
+            if image_path:
+                media_files.append(image_path)
+            
+            # Создаем карточки
+            notes = card_generator.create_cards(
+                card_data=card_data,
+                audio_path=audio_path,
+                image_path=image_path
+            )
+            
+            if notes:
+                all_notes.extend(notes)
+            else:
+                logger.warning(f"Не удалось создать карточки для {card_data.english}")
+                
+        except Exception as e:
+            logger.error(f"✗ Ошибка при обработке слова '{card_data.english}': {e}")
+            continue
+    
+    if not all_notes:
+        logger.error("✗ Не удалось создать ни одну карточку. Выход.")
+        return False
+    
+    # Перемешиваем карточки
+    logger.info(f"Перемешивание {len(all_notes)} карточек...")
+    random.shuffle(all_notes)
+    
+    # Создаем деку
+    try:
+        deck = create_deck_from_cards(all_notes, deck_id, deck_name)
+    except Exception as e:
+        logger.error(f"✗ Не удалось создать деку: {e}")
+        return False
+    
+    # Упаковываем в APKG файл
+    try:
+        logger.info(f"Сохранение деки в {output_file}...")
+        genanki.Package(deck, media_files).write_to_file(str(output_file))
+        logger.info(f"✓ APKG файл успешно создан: {output_file}")
+    except Exception as e:
+        logger.error(f"✗ Ошибка при сохранении APKG файла: {e}")
+        return False
+    
+    logger.info("=" * 60)
+    logger.info("✓ Процесс успешно завершен!")
+    logger.info(f"  Всего карточек создано: {len(all_notes)}")
+    logger.info(f"  Файл сохранен: {output_file}")
+    logger.info("=" * 60)
+    
+    return True
 
-    # EN → RU typing card
-    all_notes.append(
-        genanki.Note(
-            model=model_en_ru_typing,
-            fields=[word, translation, example, f"[sound:{safe}.mp3]", image_field],
-        )
-    )
 
-    # RU → EN typing card
-    all_notes.append(
-        genanki.Note(
-            model=model_ru_en_typing,
-            fields=[word, translation, example, f"[sound:{safe}.mp3]", image_field],
-        )
-    )
-
-    # EN → RU choice card
-    all_notes.append(
-        genanki.Note(
-            model=model_en_ru_choice,
-            fields=[word, translation, example, f"[sound:{safe}.mp3]", incorrectRuVariant1, incorrectRuVariant2, incorrectRuVariant3, incorrectRuVariant4, image_field],
-        )
-    )
-
-    # RU → EN choice card
-    all_notes.append(
-        genanki.Note(
-            model=model_ru_en_choice,
-            fields=[word, translation, example, f"[sound:{safe}.mp3]", incorrectEnVariant1, incorrectEnVariant2, incorrectEnVariant3, incorrectEnVariant4, image_field],
-        )
-    )
-
-    # RU → EN scrumble card
-    all_notes.append(
-        genanki.Note(
-            model=model_ru_en_scramble,
-            fields=[word, translation, example, f"[sound:{safe}.mp3]", image_field],
-        )
-    )
-
-# Перемешиваем список всех заметок
-random.shuffle(all_notes)
-print(f"Перемешано {len(all_notes)} заметок")
-
-# Добавляем все перемешанные заметки в колоду
-for note in all_notes:
-    deck.add_note(note)
-
-# ----------------------- PACKAGE ----------------------------
-
-genanki.Package(deck, media_files).write_to_file("vocabulary_typein.apkg")
-
-print("Done! Created vocabulary_typein.apkg")
+if __name__ == "__main__":
+    try:
+        success = main()
+        sys.exit(0 if success else 1)
+    except KeyboardInterrupt:
+        logger.info("\n⚠ Процесс прерван пользователем")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"✗ Неожиданная ошибка: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        sys.exit(1)
