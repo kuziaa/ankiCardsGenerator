@@ -1,0 +1,53 @@
+# CSV File Creating Prompt
+
+Convert the following table of English words/expressions into a **CSV table** with the exact headers below:
+
+`english, russian, example, incorrectEnVariant1, incorrectEnVariant2, incorrectEnVariant3, incorrectEnVariant4, incorrectRuVariant1, incorrectRuVariant2, incorrectRuVariant3, incorrectRuVariant4`
+
+### Rules
+
+1. **english** – the English word or expression from the table.
+    
+2. **russian** – the Russian translation from the table.
+    
+3. **example** – the example sentence from the table.
+    
+    - If the original table **does not contain an example**, create a **natural and correct English sentence** that uses the given word or expression.
+        
+4. **incorrectEnVariant1–incorrectEnVariant4**
+    
+    - Generate four **incorrect English options**.
+        
+    - They must be **similar in spelling or pronunciation** to the correct word/expression.
+        
+    - They must **NOT be synonyms** and must **NOT have the same meaning** as the correct answer.
+        
+5. **incorrectRuVariant1–incorrectRuVariant4**
+    
+    - Generate four **incorrect Russian options**.
+        
+    - They should be **similar in spelling or pronunciation** to the correct Russian translation.
+        
+    - They must **NOT match the meaning** of the correct translation.
+        
+
+### Output requirements
+
+- Output **ONLY the CSV table**.
+    
+- The **first row must contain the headers exactly as specified**.
+    
+- **Do not add explanations, comments, or formatting outside the CSV.**
+    
+- Each row must correspond to one row from the original table.
+    
+
+### Input table
+
+Below is the table to convert:
+
+---
+
+(Insert the table here)
+
+---

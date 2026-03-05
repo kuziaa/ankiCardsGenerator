@@ -26,18 +26,47 @@ class CardData:
 class CardGenerator:
     """Class for generating Anki flashcards of various types."""
     
-    def __init__(self):
-        """Initialize card generator with models."""
+    # Model type constants
+    EN_RU_TYPING = 1
+    RU_EN_TYPING = 2
+    EN_RU_CHOICE = 3
+    RU_EN_CHOICE = 4
+    RU_EN_SCRAMBLE = 5
+    
+    # Mapping of model numbers to names
+    MODEL_NAMES = {
+        EN_RU_TYPING: "EN→RU Typing",
+        RU_EN_TYPING: "RU→EN Typing",
+        EN_RU_CHOICE: "EN→RU Choice",
+        RU_EN_CHOICE: "RU→EN Choice",
+        RU_EN_SCRAMBLE: "RU→EN Scramble",
+    }
+    
+    def __init__(self, selected_models: list = None):
+        """
+        Initialize card generator with models.
+        
+        Args:
+            selected_models: List of model numbers to use (1-5). If None, all models are used.
+        """
         self.model_en_ru_typing = en_ru_typing_model.model
         self.model_ru_en_typing = ru_en_typing_model.model
         self.model_en_ru_choice = en_ru_choice_model.model
         self.model_ru_en_choice = ru_en_choice_model.model
         self.model_ru_en_scramble = ru_en_scramble_model.model
+        
+        # Use all models if not specified
+        if selected_models is None:
+            self.selected_models = [self.EN_RU_TYPING, self.RU_EN_TYPING, 
+                                   self.EN_RU_CHOICE, self.RU_EN_CHOICE, 
+                                   self.RU_EN_SCRAMBLE]
+        else:
+            self.selected_models = selected_models
     
     def create_cards(self, card_data: CardData, audio_path: str = None,
                     image_path: str = None) -> List[genanki.Note]:
         """
-        Create a set of flashcards for one word (all 5 types).
+        Create a set of flashcards for one word based on selected models.
         
         Args:
             card_data: Object with flashcard data
@@ -55,51 +84,56 @@ class CardGenerator:
         
         try:
             # EN → RU typing card
-            notes.append(
-                genanki.Note(
-                    model=self.model_en_ru_typing,
-                    fields=[card_data.english, card_data.russian, card_data.example,
-                           audio_field, image_field],
+            if self.EN_RU_TYPING in self.selected_models:
+                notes.append(
+                    genanki.Note(
+                        model=self.model_en_ru_typing,
+                        fields=[card_data.english, card_data.russian, card_data.example,
+                               audio_field, image_field],
+                    )
                 )
-            )
             
             # RU → EN typing card
-            notes.append(
-                genanki.Note(
-                    model=self.model_ru_en_typing,
-                    fields=[card_data.english, card_data.russian, card_data.example,
-                           audio_field, image_field],
+            if self.RU_EN_TYPING in self.selected_models:
+                notes.append(
+                    genanki.Note(
+                        model=self.model_ru_en_typing,
+                        fields=[card_data.english, card_data.russian, card_data.example,
+                               audio_field, image_field],
+                    )
                 )
-            )
             
             # EN → RU choice card
-            notes.append(
-                genanki.Note(
-                    model=self.model_en_ru_choice,
-                    fields=[card_data.english, card_data.russian, card_data.example,
-                           audio_field] + card_data.incorrect_ru + [image_field],
+            if self.EN_RU_CHOICE in self.selected_models:
+                notes.append(
+                    genanki.Note(
+                        model=self.model_en_ru_choice,
+                        fields=[card_data.english, card_data.russian, card_data.example,
+                               audio_field] + card_data.incorrect_ru + [image_field],
+                    )
                 )
-            )
             
             # RU → EN choice card
-            notes.append(
-                genanki.Note(
-                    model=self.model_ru_en_choice,
-                    fields=[card_data.english, card_data.russian, card_data.example,
-                           audio_field] + card_data.incorrect_en + [image_field],
+            if self.RU_EN_CHOICE in self.selected_models:
+                notes.append(
+                    genanki.Note(
+                        model=self.model_ru_en_choice,
+                        fields=[card_data.english, card_data.russian, card_data.example,
+                               audio_field] + card_data.incorrect_en + [image_field],
+                    )
                 )
-            )
             
             # RU → EN scramble card
-            notes.append(
-                genanki.Note(
-                    model=self.model_ru_en_scramble,
-                    fields=[card_data.english, card_data.russian, card_data.example,
-                           audio_field, image_field],
+            if self.RU_EN_SCRAMBLE in self.selected_models:
+                notes.append(
+                    genanki.Note(
+                        model=self.model_ru_en_scramble,
+                        fields=[card_data.english, card_data.russian, card_data.example,
+                               audio_field, image_field],
+                    )
                 )
-            )
             
-            logger.debug(f"Successfully created 5 flashcards for word: {card_data.english}")
+            logger.debug(f"Successfully created {len(notes)} flashcards for word: {card_data.english}")
             return notes
             
         except Exception as e:
