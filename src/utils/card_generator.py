@@ -111,7 +111,8 @@ class CardGenerator:
             self.selected_models = selected_models
     
     def create_cards(self, card_data: CardData, audio_path: str = None,
-                    image_path: str = None) -> List[genanki.Note]:
+                    image_path: str = None,
+                    example_audio_path: str = None) -> List[genanki.Note]:
         """
         Create a set of flashcards for one word based on selected models.
         
@@ -128,6 +129,8 @@ class CardGenerator:
         # Prepare audio and image
         audio_field = f"[sound:{card_data.safe_filename}.mp3]" if audio_path else ""
         image_field = f'<img src="{card_data.safe_filename}.jpg">' if image_path else ""
+        example_audio_field = (f"[sound:{card_data.safe_filename}_example.mp3]"
+                               if example_audio_path else "")
         
         try:
             # EN → RU typing card
@@ -136,7 +139,7 @@ class CardGenerator:
                     VocabNote(
                         model=self.model_en_ru_typing,
                         fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field, image_field],
+                               audio_field, image_field, example_audio_field],
                     )
                 )
             
@@ -146,7 +149,7 @@ class CardGenerator:
                     VocabNote(
                         model=self.model_ru_en_typing,
                         fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field, image_field],
+                               audio_field, image_field, example_audio_field],
                     )
                 )
             
@@ -156,7 +159,7 @@ class CardGenerator:
                     VocabNote(
                         model=self.model_en_ru_choice,
                         fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field] + card_data.incorrect_ru + [image_field],
+                               audio_field] + card_data.incorrect_ru + [image_field, example_audio_field],
                     )
                 )
             
@@ -166,7 +169,7 @@ class CardGenerator:
                     VocabNote(
                         model=self.model_ru_en_choice,
                         fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field] + card_data.incorrect_en + [image_field],
+                               audio_field] + card_data.incorrect_en + [image_field, example_audio_field],
                     )
                 )
             
@@ -176,7 +179,7 @@ class CardGenerator:
                     VocabNote(
                         model=self.model_ru_en_scramble,
                         fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field, image_field],
+                               audio_field, image_field, example_audio_field],
                     )
                 )
             

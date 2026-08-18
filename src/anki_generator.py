@@ -395,6 +395,11 @@ def load_cards_from_csv(csv_file_path: str) -> list:
         return []
 
 
+def example_audio_enabled(properties: dict) -> bool:
+    """EXAMPLE_AUDIO=FALSE in config.properties disables example-sentence audio."""
+    return properties.get('EXAMPLE_AUDIO', 'true').strip().lower() != 'false'
+
+
 def derive_deck_id(source_stem: str) -> int:
     """Stable per-source deck ID so different inputs never merge on import."""
     return (zlib.crc32(source_stem.encode('utf-8')) % (1 << 30)) + (1 << 30)
@@ -488,6 +493,7 @@ def main(options: CliOptions = None):
     deck_id_override = properties.get('DECK_ID', '')
     deck_name = properties.get('DECK_NAME', 'Custom EN-RU Vocabulary Deck')
     anki_url = properties.get('ANKICONNECT_URL', 'http://127.0.0.1:8765')
+    generate_example_audio = example_audio_enabled(properties)
     
     # Transform paths relative to project root directory
     root_path = project_root()
@@ -594,6 +600,16 @@ def main(options: CliOptions = None):
             if audio_path:
                 media_files.append(audio_path)
             
+            # Example-sentence audio (second mp3, played on the back)
+            example_audio_path = None
+            if generate_example_audio and card_data.example:
+                example_audio_path = media_manager.generate_audio(
+                    text=card_data.example,
+                    safe_filename=f"{card_data.safe_filename}_example",
+                )
+                if example_audio_path:
+                    media_files.append(example_audio_path)
+            
             # Download image
             image_path = media_manager.download_image(
                 search_term=card_data.english,
@@ -606,7 +622,8 @@ def main(options: CliOptions = None):
             notes = card_generator.create_cards(
                 card_data=card_data,
                 audio_path=audio_path,
-                image_path=image_path
+                image_path=image_path,
+                example_audio_path=example_audio_path
             )
             
             if notes:

@@ -2,7 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from anki_generator import cli, parse_args, parse_model_selection, resolve_csv_path
+from anki_generator import (cli, example_audio_enabled, parse_args,
+                            parse_model_selection, resolve_csv_path)
 from utils.card_generator import CardGenerator
 
 
@@ -121,3 +122,12 @@ def test_push_options_are_parsed():
 
     assert options.push is True
     assert options.overwrite_media is True
+
+
+def test_example_audio_enabled_by_default():
+    assert example_audio_enabled({}) is True
+
+
+def test_example_audio_disabled_by_config():
+    assert example_audio_enabled({"EXAMPLE_AUDIO": "FALSE"}) is False
+    assert example_audio_enabled({"EXAMPLE_AUDIO": "false "}) is False

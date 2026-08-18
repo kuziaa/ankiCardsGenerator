@@ -75,3 +75,27 @@ def test_cloze_note_skipped_when_word_not_in_example():
     notes = CardGenerator(selected_models=[CardGenerator.EN_CLOZE]).create_cards(card)
 
     assert notes == []
+
+
+def test_example_audio_field_lands_last_on_v2_models():
+    generator = CardGenerator(selected_models=[CardGenerator.EN_RU_TYPING,
+                                               CardGenerator.EN_RU_CHOICE])
+
+    notes = generator.create_cards(make_card_data(), example_audio_path="x_example.mp3")
+
+    for note in notes:
+        assert note.fields[-1] == "[sound:dojo_5e09bf57_example.mp3]"
+
+
+def test_cloze_note_carries_no_example_audio():
+    generator = CardGenerator(selected_models=[CardGenerator.EN_CLOZE])
+
+    notes = generator.create_cards(make_card_data(), example_audio_path="x_example.mp3")
+
+    assert len(notes[0].fields) == 3
+
+
+def test_example_audio_field_empty_without_path():
+    notes = CardGenerator(selected_models=[CardGenerator.EN_RU_TYPING]).create_cards(make_card_data())
+
+    assert notes[0].fields[-1] == ""
