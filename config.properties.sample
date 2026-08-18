@@ -7,3 +7,6 @@ CX=yourGoogleCustomSearchCx
 # name, so different CSVs never merge into one deck on import.
 #DECK_ID=999004
 DECK_NAME=Custom EN-RU Vocabulary Deck
+
+# AnkiConnect endpoint for --push and the learned-words sync (optional)
+#ANKICONNECT_URL=http://127.0.0.1:8765

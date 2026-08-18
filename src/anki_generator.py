@@ -23,7 +23,12 @@ from utils.properties_util import load_properties
 from utils.media_manager import MediaManager
 from utils.card_generator import CardGenerator, CardData, create_deck_from_cards
 from utils.csv_validator import validate_csv, validate_word_entries
-from utils.known_words import filter_known_words, load_known_words, record_known_words
+from utils.known_words import (filter_known_words, load_known_words,
+                               record_known_words, record_word_list)
+from utils.anki_connect import (AnkiConnectClient, AnkiConnectError,
+                                AnkiNotAvailableError, ensure_deck, ensure_models,
+                                fetch_mature_words, push_notes, store_media,
+                                trigger_sync)
 from utils.md_loader import MarkdownTableError, load_rows_from_markdown
 
 # Initialize logger
@@ -46,6 +51,8 @@ class CliOptions:
     validate_only: bool = False
     offline: bool = False
     include_known: bool = False
+    push: bool = False
+    overwrite_media: bool = False
 
 
 def project_root() -> Path:
@@ -99,7 +106,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--push',
         action='store_true',
-        help="Push cards directly to Anki via AnkiConnect (planned, not implemented).",
+        help="Push cards into a running Anki via AnkiConnect instead of writing an .apkg file.",
+    )
+    parser.add_argument(
+        '--overwrite-media',
+        action='store_true',
+        help="With --push: overwrite media files that already exist in the Anki collection.",
     )
     return parser
 
@@ -148,14 +160,15 @@ def parse_args(argv: list = None) -> CliOptions:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    if args.push:
-        parser.error("--push is planned but not implemented yet")
+    if args.overwrite_media and not args.push:
+        parser.error("--overwrite-media requires --push")
 
     if args.from_md and args.csv_file:
         parser.error("--from-md and --csv are mutually exclusive")
 
     options = CliOptions(validate_only=args.validate, offline=args.offline,
-                         include_known=args.include_known)
+                         include_known=args.include_known, push=args.push,
+                         overwrite_media=args.overwrite_media)
     if args.from_md:
         try:
             options.markdown_path = resolve_existing_path(args.from_md)
@@ -421,6 +434,24 @@ def _load_and_validate_markdown(markdown_path: Path):
             for _line_num, english, russian, example in rows]
 
 
+def _sync_learned_words_from_anki(ledger_path: Path, anki_url: str) -> None:
+    """Best-effort: record words already mature in Anki as known."""
+    from utils.card_generator import ALL_MODELS
+    client = AnkiConnectClient(url=anki_url)
+    try:
+        words = fetch_mature_words(client, [model.name for model in ALL_MODELS])
+    except AnkiNotAvailableError:
+        logger.info("Anki is not running - skipping learned-words sync")
+        return
+    except AnkiConnectError as e:
+        logger.warning(f"AnkiConnect error during learned-words sync: {e}")
+        return
+    if words:
+        added = record_word_list(ledger_path, sorted(words), 'anki')
+        if added:
+            logger.info(f"Known-words ledger: {added} mature word(s) pulled from Anki")
+
+
 def validate_command(csv_path: Path = None, markdown_path: Path = None) -> bool:
     """--validate mode: check an input file and exit without generating a deck."""
     if markdown_path is not None:
@@ -456,6 +487,7 @@ def main(options: CliOptions = None):
     cx = properties.get('CX', '')
     deck_id_override = properties.get('DECK_ID', '')
     deck_name = properties.get('DECK_NAME', 'Custom EN-RU Vocabulary Deck')
+    anki_url = properties.get('ANKICONNECT_URL', 'http://127.0.0.1:8765')
     
     # Transform paths relative to project root directory
     root_path = project_root()
@@ -522,6 +554,7 @@ def main(options: CliOptions = None):
     # Known-words ledger: skip vocabulary already generated from other sources
     ledger_path = root_path / 'known_words.json'
     if not options.include_known:
+        _sync_learned_words_from_anki(ledger_path, anki_url)
         ledger = load_known_words(ledger_path)
         cards_data, skipped_words = filter_known_words(cards_data, ledger, source_name_no_ext)
         if skipped_words:
@@ -600,14 +633,42 @@ def main(options: CliOptions = None):
         logger.error(f"✗ Failed to create deck: {e}")
         return False
     
-    # Package into APKG file
-    try:
-        logger.info(f"Saving deck to {output_file}...")
-        genanki.Package(deck, media_files).write_to_file(str(output_file))
-        logger.info(f"✓ APKG file successfully created: {output_file}")
-    except Exception as e:
-        logger.error(f"✗ Error saving APKG file: {e}")
-        return False
+    if options.push:
+        # Push straight into the running Anki instead of writing a file
+        try:
+            client = AnkiConnectClient(url=anki_url)
+            unique_models = {note.model.name: note.model for note in all_notes}
+            created_models = ensure_models(client, unique_models.values())
+            if created_models:
+                logger.info(f"Created note types in Anki: {', '.join(created_models)}")
+            ensure_deck(client, deck_name)
+            stored, skipped = store_media(client, media_files,
+                                          overwrite=options.overwrite_media)
+            logger.info(f"Media pushed to Anki: {stored} stored, {skipped} already present")
+            added, updated = push_notes(client, all_notes, deck_name)
+            logger.info(f"✓ Pushed to Anki deck '{deck_name}': "
+                        f"{added} added, {updated} updated")
+            if trigger_sync(client):
+                logger.info("AnkiWeb sync triggered")
+            else:
+                logger.warning("AnkiWeb sync failed - sync manually in Anki")
+        except AnkiNotAvailableError as e:
+            logger.error(f"✗ {e}")
+            logger.error("Start Anki with the AnkiConnect add-on installed, "
+                         "or rerun without --push to write an .apkg file.")
+            return False
+        except AnkiConnectError as e:
+            logger.error(f"✗ AnkiConnect error: {e}")
+            return False
+    else:
+        # Package into APKG file
+        try:
+            logger.info(f"Saving deck to {output_file}...")
+            genanki.Package(deck, media_files).write_to_file(str(output_file))
+            logger.info(f"✓ APKG file successfully created: {output_file}")
+        except Exception as e:
+            logger.error(f"✗ Error saving APKG file: {e}")
+            return False
     
     # Record generated words into the ledger
     added_words = record_known_words(ledger_path, cards_data, source_name_no_ext)
@@ -617,7 +678,10 @@ def main(options: CliOptions = None):
     logger.info("=" * 60)
     logger.info("✓ Process completed successfully!")
     logger.info(f"  Total flashcards created: {len(all_notes)}")
-    logger.info(f"  File saved: {output_file}")
+    if options.push:
+        logger.info(f"  Pushed to Anki deck: {deck_name}")
+    else:
+        logger.info(f"  File saved: {output_file}")
     logger.info(f"  Media directory: {media_dir}")
     logger.info("=" * 60)
     

@@ -12,6 +12,14 @@ from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
+ALL_MODELS = [
+    en_ru_typing_model.model,
+    ru_en_typing_model.model,
+    en_ru_choice_model.model,
+    ru_en_choice_model.model,
+    ru_en_scramble_model.model,
+]
+
 
 def safe_media_name(text: str) -> str:
     """Deterministic filesystem-safe media name: ASCII slug + short hash suffix."""

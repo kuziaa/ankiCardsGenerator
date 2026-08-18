@@ -140,7 +140,8 @@ All options at a glance (run `anki-cards-generator --help` for the same list):
 | `--validate` | Validate the input file and exit without generating a deck |
 | `--offline` | Use only cached local media; no TTS or image-search network calls |
 | `--include-known` | Do not skip words already present in the known-words ledger |
-| `--push` | Planned (AnkiConnect push), not implemented yet |
+| `--push` | Push cards into a running Anki via AnkiConnect instead of writing an `.apkg` file |
+| `--overwrite-media` | With `--push`: overwrite media files that already exist in the Anki collection |
 
 Running with no options keeps the interactive mode: the script asks for the
 CSV file and the card models.
@@ -195,11 +196,38 @@ Every successful run records its words in `known_words.json` at the project
 root (not tracked by Git). On later runs, words already attributed to a
 *different* source file are skipped, so chapter decks do not repeat vocabulary
 you have already drilled. Re-running the same file regenerates its own words
-as usual. Disable the filter for one run with:
+as usual.
+
+When Anki is running with the AnkiConnect add-on, every run also pulls words
+whose cards are already mature in Anki (interval >= 21 days) into the ledger
+(source `anki`). This is best-effort: with Anki closed the sync is skipped
+with a single log line. Disable the filter for one run with:
 
 ```bash
 anki-cards-generator --csv chapter02.csv --models all --include-known
 ```
+
+### Push to Anki (AnkiConnect)
+
+With Anki running and the [AnkiConnect](https://ankiweb.net/shared/info/2055492159)
+add-on installed, `--push` sends the cards straight into your collection
+instead of writing an `.apkg` file:
+
+```bash
+anki-cards-generator --csv chapter02.csv --models all --push
+```
+
+- Missing note types and the target deck are created automatically.
+- Media files are uploaded; files already present in the collection are kept
+  unless `--overwrite-media` is passed.
+- Existing notes (matched by the word and note type) are updated **in place**,
+  keeping their scheduling history; new words are added.
+- An AnkiWeb sync is triggered at the end, so your phone gets the cards.
+- If Anki is not running, the run fails with a clear message - rerun without
+  `--push` to get an `.apkg` file instead.
+
+The AnkiConnect URL can be overridden with `ANKICONNECT_URL` in
+`config.properties` (default `http://127.0.0.1:8765`).
 
 ### CSV Validation
 

@@ -43,19 +43,24 @@ def filter_known_words(cards: list, ledger: dict, source_stem: str) -> tuple:
 
 
 def record_known_words(path, cards: list, source_stem: str) -> int:
-    """Add generated words to the ledger; existing entries keep their source.
+    """Add generated words to the ledger; existing entries keep their source."""
+    return record_word_list(path, [card.english for card in cards], source_stem)
+
+
+def record_word_list(path, word_list: list, source: str) -> int:
+    """Add plain words to the ledger; existing entries keep their source.
 
     Returns the number of newly recorded words.
     """
     ledger_path = Path(path)
     words = load_known_words(ledger_path)
     added = 0
-    for card in cards:
-        key = _norm(card.english)
+    for word in word_list:
+        key = _norm(word)
         if key not in words:
             words[key] = {
-                'word': card.english,
-                'source': source_stem,
+                'word': word,
+                'source': source,
                 'added': date.today().isoformat(),
             }
             added += 1
