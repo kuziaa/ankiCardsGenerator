@@ -3,10 +3,14 @@ import re
 from pathlib import Path
 
 from utils.card_generator import CardData
+from utils.csv_validator import validate_word_entries
 
-WORD_ALIASES = {"word", "english"}
-TRANSLATION_ALIASES = {"translation", "russian"}
-EXAMPLE_ALIASES = {"example"}
+WORD_ALIASES = ("word", "english")
+TRANSLATION_ALIASES = ("translation", "russian")
+EXAMPLE_ALIASES = ("example",)
+
+# Split on pipes that are not escaped with a backslash (Obsidian escapes | in cells)
+_CELL_SPLIT = re.compile(r"(?<!\\)\|")
 
 
 class MarkdownTableError(ValueError):
@@ -15,17 +19,18 @@ class MarkdownTableError(ValueError):
 
 def _clean_cell(value: str) -> str:
     value = html.unescape(value)
+    value = value.replace("\\|", "|")
     value = value.replace("**", "").replace("*", "").replace("`", "")
     return re.sub(r"\s+", " ", value).strip()
 
 
 def _split_row(line: str) -> list:
-    line = line.strip()
-    if line.startswith("|"):
-        line = line[1:]
-    if line.endswith("|"):
-        line = line[:-1]
-    return [_clean_cell(cell) for cell in line.split("|")]
+    parts = _CELL_SPLIT.split(line.strip())
+    if parts and parts[0] == "":
+        parts = parts[1:]
+    if parts and parts[-1] == "":
+        parts = parts[:-1]
+    return [_clean_cell(part) for part in parts]
 
 
 def _is_separator(line: str) -> bool:
@@ -39,11 +44,14 @@ def _normalized_header(value: str) -> str:
     return re.sub(r"[^a-z]+", "", _clean_cell(value).casefold())
 
 
-def _find_column(header: list, aliases: set, label: str) -> int:
+def _find_column(header: list, aliases: tuple, label: str) -> int:
     normalized = [_normalized_header(value) for value in header]
+    # Prefix match so vault-style headers like "Word / Expression" or
+    # "Translation (RU)" resolve to the expected columns
     for alias in aliases:
-        if alias in normalized:
-            return normalized.index(alias)
+        for index, value in enumerate(normalized):
+            if value.startswith(alias):
+                return index
     raise MarkdownTableError(f"missing required columns: {label}")
 
 
@@ -65,38 +73,55 @@ def _find_table(lines: list) -> tuple:
                 columns = _find_columns(header)
             except MarkdownTableError:
                 continue
-            return header, lines[index + 2:], columns
+            # Data starts two lines below the header; +3 converts to 1-based
+            return lines[index + 2:], columns, index + 3
     if found_table:
         raise MarkdownTableError("missing required columns")
     raise MarkdownTableError("no markdown table found")
 
 
-def load_cards_from_markdown(path) -> list[CardData]:
+def load_rows_from_markdown(path) -> tuple:
+    """Parse the vocabulary table into (line_num, word, translation, example) rows.
+
+    Returns (rows, errors) where errors describe malformed table lines with
+    physical line numbers. Word-level validation is left to the caller
+    (validate_word_entries). Raises MarkdownTableError when the note has no
+    usable table at all.
+    """
     markdown_path = Path(path)
     if not markdown_path.exists():
         raise MarkdownTableError(f"file not found: {markdown_path}")
 
     lines = markdown_path.read_text(encoding="utf-8-sig").splitlines()
-    _header, data_lines, columns = _find_table(lines)
+    data_lines, columns, first_line_num = _find_table(lines)
     word_index, translation_index, example_index = columns
-    required_width = max(word_index, translation_index, example_index) + 1
+    required_width = max(columns) + 1
 
-    cards = []
-    for line in data_lines:
+    rows = []
+    errors = []
+    for offset, line in enumerate(data_lines):
         if "|" not in line:
             break
+        line_num = first_line_num + offset
         cells = _split_row(line)
-        if len(cells) < required_width:
-            continue
         if not any(cells):
             continue
-        english = cells[word_index]
-        russian = cells[translation_index]
-        example = cells[example_index]
-        if not english or not russian:
-            raise MarkdownTableError("empty required word/translation cell")
-        cards.append(CardData(english, russian, example, [], []))
+        if len(cells) < required_width:
+            errors.append(f"line {line_num}: {len(cells)} cells instead of at least {required_width}")
+            continue
+        rows.append((line_num, cells[word_index], cells[translation_index], cells[example_index]))
 
-    if not cards:
+    if not rows and not errors:
         raise MarkdownTableError("markdown table contains no cards")
-    return cards
+    return rows, errors
+
+
+def load_cards_from_markdown(path) -> list[CardData]:
+    """Parse and validate a markdown note, raising on any problem."""
+    rows, errors = load_rows_from_markdown(path)
+    report = validate_word_entries(rows)
+    problems = errors + report.errors
+    if problems:
+        raise MarkdownTableError("; ".join(problems))
+    return [CardData(english, russian, example, [], [])
+            for _line_num, english, russian, example in rows]

@@ -22,8 +22,8 @@ from utils.logger import setup_logger
 from utils.properties_util import load_properties
 from utils.media_manager import MediaManager
 from utils.card_generator import CardGenerator, CardData, create_deck_from_cards
-from utils.csv_validator import validate_csv
-from utils.md_loader import MarkdownTableError, load_cards_from_markdown
+from utils.csv_validator import validate_csv, validate_word_entries
+from utils.md_loader import MarkdownTableError, load_rows_from_markdown
 
 # Initialize logger
 logger = setup_logger(__name__)
@@ -143,6 +143,9 @@ def parse_args(argv: list = None) -> CliOptions:
 
     if args.push:
         parser.error("--push is planned but not implemented yet")
+
+    if args.from_md and args.csv_file:
+        parser.error("--from-md and --csv are mutually exclusive")
 
     options = CliOptions(validate_only=args.validate, offline=args.offline)
     if args.from_md:
@@ -388,20 +391,32 @@ def _report_csv_validation(csv_path: str) -> bool:
     return report.ok
 
 
-def _report_markdown_validation(markdown_path: Path) -> bool:
+def _load_and_validate_markdown(markdown_path: Path):
+    """Parse and validate a markdown note. Returns a CardData list or None on errors."""
     try:
-        cards = load_cards_from_markdown(markdown_path)
+        rows, structural_errors = load_rows_from_markdown(markdown_path)
     except MarkdownTableError as e:
         logger.error(f"Markdown: {e}")
-        return False
-    logger.info(f"Markdown validation: {len(cards)} rows, 0 errors, 0 warnings")
-    return True
+        return None
+
+    report = validate_word_entries(rows)
+    for warning in report.warnings:
+        logger.warning(f"Markdown: {warning}")
+    for error in structural_errors + report.errors:
+        logger.error(f"Markdown: {error}")
+    total_errors = len(structural_errors) + len(report.errors)
+    logger.info(f"Markdown validation: {report.row_count} rows, "
+                f"{total_errors} errors, {len(report.warnings)} warnings")
+    if total_errors:
+        return None
+    return [CardData(english, russian, example, [], [])
+            for _line_num, english, russian, example in rows]
 
 
 def validate_command(csv_path: Path = None, markdown_path: Path = None) -> bool:
     """--validate mode: check an input file and exit without generating a deck."""
     if markdown_path is not None:
-        return _report_markdown_validation(markdown_path)
+        return _load_and_validate_markdown(markdown_path) is not None
 
     if csv_path is None:
         csv_path = select_csv_file(resources_dir())
@@ -443,10 +458,9 @@ def main(options: CliOptions = None):
     cards_data = None
     if options.markdown_path:
         source_name_no_ext = options.markdown_path.stem
-        try:
-            cards_data = load_cards_from_markdown(options.markdown_path)
-        except MarkdownTableError as e:
-            logger.error(f"Markdown: {e}")
+        cards_data = _load_and_validate_markdown(options.markdown_path)
+        if cards_data is None:
+            logger.error("✗ Markdown validation failed. Fix the errors above and rerun.")
             return False
     else:
         # Select CSV file (let user choose if multiple exist)

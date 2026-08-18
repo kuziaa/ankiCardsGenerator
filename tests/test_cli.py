@@ -101,3 +101,10 @@ def test_planned_flags_return_usage_error():
         parse_args(["--push"])
 
     assert exc_info.value.code == 2
+
+
+def test_from_md_and_csv_are_mutually_exclusive():
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args(["--from-md", "x.md", "--csv", "y.csv"])
+
+    assert exc_info.value.code == 2
