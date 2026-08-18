@@ -1,14 +1,15 @@
 import genanki
 
 model = genanki.Model(
-    234556757,  # Unique model ID
-    "RU-EN Scramble Model",
+    1563008841,  # Unique model ID
+    "RU-EN Scramble Model v2",
     fields=[
         {"name": "English"},
         {"name": "Russian"},
         {"name": "Example"},
         {"name": "Audio"},
         {"name": "Image"},
+        {"name": "ExampleAudio"},
     ],
     templates=[
         {
@@ -229,6 +230,7 @@ model = genanki.Model(
                     <hr id="answer">
                     
                     <div class="example-text">{{Example}}</div>
+                    {{ExampleAudio}}
                 </div>
             """,
         }
