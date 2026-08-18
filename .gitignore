@@ -13,3 +13,4 @@ media/
 results/
 .venv/
 
+known_words.json

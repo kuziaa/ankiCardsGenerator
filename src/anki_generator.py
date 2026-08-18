@@ -23,6 +23,7 @@ from utils.properties_util import load_properties
 from utils.media_manager import MediaManager
 from utils.card_generator import CardGenerator, CardData, create_deck_from_cards
 from utils.csv_validator import validate_csv, validate_word_entries
+from utils.known_words import filter_known_words, load_known_words, record_known_words
 from utils.md_loader import MarkdownTableError, load_rows_from_markdown
 
 # Initialize logger
@@ -44,6 +45,7 @@ class CliOptions:
     selected_models: list = None
     validate_only: bool = False
     offline: bool = False
+    include_known: bool = False
 
 
 def project_root() -> Path:
@@ -83,6 +85,11 @@ def build_parser() -> argparse.ArgumentParser:
         '--offline',
         action='store_true',
         help="Use only cached local media; do not call TTS or image search services.",
+    )
+    parser.add_argument(
+        '--include-known',
+        action='store_true',
+        help="Do not skip words already present in the known-words ledger.",
     )
     parser.add_argument(
         '--from-md',
@@ -147,7 +154,8 @@ def parse_args(argv: list = None) -> CliOptions:
     if args.from_md and args.csv_file:
         parser.error("--from-md and --csv are mutually exclusive")
 
-    options = CliOptions(validate_only=args.validate, offline=args.offline)
+    options = CliOptions(validate_only=args.validate, offline=args.offline,
+                         include_known=args.include_known)
     if args.from_md:
         try:
             options.markdown_path = resolve_existing_path(args.from_md)
@@ -511,6 +519,21 @@ def main(options: CliOptions = None):
         logger.error("✗ No flashcards to process. Exiting.")
         return False
     
+    # Known-words ledger: skip vocabulary already generated from other sources
+    ledger_path = root_path / 'known_words.json'
+    if not options.include_known:
+        ledger = load_known_words(ledger_path)
+        cards_data, skipped_words = filter_known_words(cards_data, ledger, source_name_no_ext)
+        if skipped_words:
+            preview = ', '.join(skipped_words[:20])
+            if len(skipped_words) > 20:
+                preview += f" and {len(skipped_words) - 20} more"
+            logger.info(f"Skipped {len(skipped_words)} known word(s): {preview}")
+        if not cards_data:
+            logger.error("✗ All words are already in the known-words ledger. "
+                         "Use --include-known to regenerate them.")
+            return False
+    
     # Initialize media manager and card generator with selected models
     media_manager = MediaManager(
         media_dir=str(media_dir),
@@ -585,6 +608,11 @@ def main(options: CliOptions = None):
     except Exception as e:
         logger.error(f"✗ Error saving APKG file: {e}")
         return False
+    
+    # Record generated words into the ledger
+    added_words = record_known_words(ledger_path, cards_data, source_name_no_ext)
+    if added_words:
+        logger.info(f"Known-words ledger: {added_words} new word(s) recorded")
     
     logger.info("=" * 60)
     logger.info("✓ Process completed successfully!")

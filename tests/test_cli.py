@@ -108,3 +108,9 @@ def test_from_md_and_csv_are_mutually_exclusive():
         parse_args(["--from-md", "x.md", "--csv", "y.csv"])
 
     assert exc_info.value.code == 2
+
+
+def test_include_known_flag_is_parsed():
+    options = parse_args(["--include-known"])
+
+    assert options.include_known is True
