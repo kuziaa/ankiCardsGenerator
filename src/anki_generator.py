@@ -526,21 +526,26 @@ def main(options: CliOptions = None):
     return True
 
 
-if __name__ == "__main__":
+def cli(argv: list = None) -> int:
+    """Console-script entry point."""
     try:
-        options = parse_args(sys.argv[1:])
+        options = parse_args(argv)
         if options.validate_only:
             success = validate_command(options.csv_path)
         else:
             success = main(options)
-        sys.exit(0 if success else 1)
+        return 0 if success else 1
     except FileNotFoundError:
-        sys.exit(1)
+        return 1
     except KeyboardInterrupt:
         logger.info("\n⚠ Process interrupted by user")
-        sys.exit(1)
+        return 1
     except Exception as e:
         logger.error(f"✗ Unexpected error: {e}")
         import traceback
         logger.error(traceback.format_exc())
-        sys.exit(1)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(cli(sys.argv[1:]))

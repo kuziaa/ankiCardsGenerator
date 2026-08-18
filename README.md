@@ -20,16 +20,15 @@ An automated tool for creating Anki decks with flashcards for learning English v
 git clone <repository-url>
 cd ankiCardsGenerator
 
-# 2. Install dependencies
-pip install -r requirements.txt
+# 2. Install the package
+pip install -e .
 
 # 3. Configure (optional, for image downloads)
 cp config.properties.sample config.properties
 # Edit config.properties and add your Google API keys
 
 # 4. Run the generator
-cd src
-python anki_generator.py
+anki-cards-generator
 
 # 5. Follow the prompts:
 #    - Select a CSV file from src/resources/
@@ -40,8 +39,8 @@ python anki_generator.py
 # Your deck will be created in the results/ directory
 ```
 
-- Python 3.7+
-- Dependencies listed in `requirements.txt`
+- Python 3.9+
+- Dependencies listed in `pyproject.toml` and `requirements.txt`
 
 ## Installation
 
@@ -49,7 +48,7 @@ python anki_generator.py
 
 2. **Install dependencies**:
 ```bash
-pip install -r requirements.txt
+pip install -e .
 ```
 
 3. **Configure the application** (optional, for image downloads):
@@ -123,8 +122,7 @@ Use [ChatGPT Prompt for Vocabulary Extraction](docs/prompt_vocabulary_extraction
 ### Basic Execution
 
 ```bash
-cd src
-python anki_generator.py
+anki-cards-generator
 ```
 
 Running without arguments starts the interactive flow: CSV selection first,
@@ -135,7 +133,7 @@ then card model selection.
 Use `--csv` and `--models` to generate a deck without prompts:
 
 ```bash
-python src/anki_generator.py --csv cards.example.csv --models 1,2,5
+anki-cards-generator --csv cards.example.csv --models 1,2,5
 ```
 
 CSV paths are resolved in this order:
@@ -154,7 +152,7 @@ Model selection accepts `all` or comma-separated model numbers:
 For a no-network run, use cached local media only:
 
 ```bash
-python src/anki_generator.py --csv cards.example.csv --models all --offline
+anki-cards-generator --csv cards.example.csv --models all --offline
 ```
 
 Exit codes are stable for scripted usage: `0` means success, `1` means a
@@ -167,7 +165,7 @@ Check a CSV file for structural problems (wrong field count, distractors equal
 to the answer, duplicates, hostile characters) without generating a deck:
 
 ```bash
-python src/anki_generator.py --validate --csv my_words.csv
+anki-cards-generator --validate --csv my_words.csv
 ```
 
 The same validation runs automatically before every generation and stops the
@@ -312,8 +310,10 @@ ankiCardsGenerator/
 ankiCardsGenerator/
 ├── config.properties              # Configuration (not tracked by Git)
 ├── config.properties.sample       # Configuration example
+├── pyproject.toml                 # Package metadata, entry point, pytest config
 ├── requirements.txt               # Dependencies
 ├── README.md                      # Documentation
+├── .github/workflows/tests.yml    # CI test workflow
 ├── docs/                          # Documentation and prompts
 │   ├── prompt_csv_creation.txt
 │   └── prompt_vocabulary_extraction.txt
@@ -341,6 +341,11 @@ ankiCardsGenerator/
 │   └── ...
 ├── results/                      # Generated APKG decks (not tracked)
 │   └── *.apkg
+├── tests/                        # Pytest test suite
+│   ├── test_card_generator.py
+│   ├── test_cli.py
+│   ├── test_csv_validator.py
+│   └── test_media_manager.py
 └── logs/                         # Execution logs (not tracked)
     └── anki_generator.log
 ```
