@@ -2,19 +2,8 @@
 API_KEY=yourGoogleCustomSearchApiKey
 CX=yourGoogleCustomSearchCx
 
-# Настройки деки Anki
-DECK_ID=999004
+# Anki deck settings
+# DECK_ID is optional: when omitted, a stable ID is derived from the CSV file
+# name, so different CSVs never merge into one deck on import.
+#DECK_ID=999004
 DECK_NAME=Custom EN-RU Vocabulary Deck
-
-# Настройки для скачивания изображений
-# Установить FALSE если нет API ключей
-DOWNLOAD_IMAGES=TRUE
-
-# Путь к CSV файлу с карточками
-CSV_FILE_PATH=src/resources/cards.csv
-
-# Путь к папке для медиафайлов (аудио, изображения)
-MEDIA_DIR=media
-
-# Путь к выходному APKG файлу
-OUTPUT_FILE=vocabulary.apkg

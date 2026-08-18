@@ -27,6 +27,11 @@ def setup_logger(name: str, log_file: str = "logs/anki_generator.log") -> loggin
     )
     
     # Console output (INFO and above only)
+    # Windows consoles often default to a legacy codepage; never crash on unicode
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except (AttributeError, ValueError):
+        pass
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.INFO)
     console_handler.setFormatter(log_format)

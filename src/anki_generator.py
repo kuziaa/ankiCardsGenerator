@@ -11,6 +11,7 @@ This script creates an Anki deck with flashcards from a CSV file, including:
 import csv
 import random
 import sys
+import zlib
 from pathlib import Path
 
 import genanki
@@ -19,6 +20,7 @@ from utils.logger import setup_logger
 from utils.properties_util import load_properties
 from utils.media_manager import MediaManager
 from utils.card_generator import CardGenerator, CardData, create_deck_from_cards
+from utils.csv_validator import validate_csv
 
 # Initialize logger
 logger = setup_logger(__name__)
@@ -148,7 +150,7 @@ def load_cards_from_csv(csv_file_path: str) -> list:
         return cards
     
     try:
-        with open(csv_file_path, 'r', encoding='utf-8') as csvfile:
+        with open(csv_file_path, 'r', encoding='utf-8-sig') as csvfile:
             reader = csv.DictReader(csvfile)
             
             # Check for required columns
@@ -163,6 +165,9 @@ def load_cards_from_csv(csv_file_path: str) -> list:
             if reader.fieldnames is None:
                 logger.error("CSV file is empty or corrupted!")
                 return cards
+            
+            # Tolerate stray spaces in header names
+            reader.fieldnames = [name.strip() for name in reader.fieldnames]
             
             if not required_columns.issubset(set(reader.fieldnames)):
                 missing = required_columns - set(reader.fieldnames)
@@ -211,6 +216,37 @@ def load_cards_from_csv(csv_file_path: str) -> list:
         return []
 
 
+def derive_deck_id(csv_stem: str) -> int:
+    """Stable per-CSV deck ID so different CSVs never merge on import."""
+    return (zlib.crc32(csv_stem.encode('utf-8')) % (1 << 30)) + (1 << 30)
+
+
+def _report_csv_validation(csv_path: str) -> bool:
+    """Run the validator and log its findings. Returns True when no errors."""
+    report = validate_csv(csv_path)
+    for warning in report.warnings:
+        logger.warning(f"CSV: {warning}")
+    for error in report.errors:
+        logger.error(f"CSV: {error}")
+    logger.info(f"CSV validation: {report.row_count} rows, "
+                f"{len(report.errors)} errors, {len(report.warnings)} warnings")
+    return report.ok
+
+
+def validate_command(csv_arg: str = None) -> bool:
+    """--validate mode: check a CSV file and exit without generating a deck."""
+    if csv_arg:
+        csv_path = Path(csv_arg)
+        if not csv_path.exists():
+            logger.error(f"✗ File {csv_arg} not found!")
+            return False
+    else:
+        csv_path = select_csv_file(Path(__file__).parent / 'resources')
+        if not csv_path:
+            return False
+    return _report_csv_validation(str(csv_path))
+
+
 def main():
     """Main function to generate Anki deck."""
     
@@ -230,7 +266,7 @@ def main():
     # Get parameters from config
     api_key = properties.get('API_KEY', '')
     cx = properties.get('CX', '')
-    deck_id = int(properties.get('DECK_ID', '999004'))
+    deck_id_override = properties.get('DECK_ID', '')
     deck_name = properties.get('DECK_NAME', 'Custom EN-RU Vocabulary Deck')
     
     # Transform paths relative to project root directory
@@ -244,6 +280,11 @@ def main():
         logger.error("✗ No CSV file selected. Exiting.")
         return False
     
+    # Validate CSV before the expensive media phase
+    if not _report_csv_validation(str(selected_csv)):
+        logger.error("✗ CSV validation failed. Fix the errors above and rerun.")
+        return False
+    
     # Select card models to use
     selected_models = select_card_models()
     if not selected_models:
@@ -252,6 +293,9 @@ def main():
     
     # Get CSV filename without extension for subfolder
     csv_name_no_ext = selected_csv.stem
+    
+    # Deck ID: explicit config override wins, otherwise stable per-CSV ID
+    deck_id = int(deck_id_override) if deck_id_override else derive_deck_id(csv_name_no_ext)
     
     # Create media subdirectory for this CSV file
     media_dir = media_root_dir / csv_name_no_ext
@@ -264,9 +308,8 @@ def main():
     # Set output file name based on CSV file name
     output_file = results_dir / f"{csv_name_no_ext}.apkg"
     
-    # Update deck name to include CSV file name
-    if deck_name == 'Custom EN-RU Vocabulary Deck':
-        deck_name = f"Custom EN-RU Vocabulary Deck - {csv_name_no_ext}"
+    # Hierarchical deck name: Anki builds a subdeck per CSV under the base name
+    deck_name = f"{deck_name}::{csv_name_no_ext}"
     
     logger.info(f"Media files will be saved to: {media_dir}")
     logger.info(f"Output file: {output_file}")
@@ -361,7 +404,11 @@ def main():
 
 if __name__ == "__main__":
     try:
-        success = main()
+        if '--validate' in sys.argv:
+            extra_args = [arg for arg in sys.argv[1:] if arg != '--validate']
+            success = validate_command(extra_args[0] if extra_args else None)
+        else:
+            success = main()
         sys.exit(0 if success else 1)
     except KeyboardInterrupt:
         logger.info("\n⚠ Process interrupted by user")

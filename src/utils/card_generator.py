@@ -1,4 +1,7 @@
 import genanki
+import hashlib
+import re
+import unicodedata
 from typing import List, Tuple
 from models import en_ru_typing_model
 from models import ru_en_typing_model
@@ -8,6 +11,26 @@ from models import ru_en_scramble_model
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
+
+
+def safe_media_name(text: str) -> str:
+    """Deterministic filesystem-safe media name: ASCII slug + short hash suffix."""
+    slug = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    slug = re.sub(r"[^A-Za-z0-9]+", "_", slug).strip("_").lower()[:40]
+    digest = hashlib.sha1(text.encode("utf-8")).hexdigest()[:8]
+    return f"{slug}_{digest}" if slug else digest
+
+
+class VocabNote(genanki.Note):
+    """Note identified by word + model instead of the full field set.
+
+    Keeps scheduling history on re-import after edits and prevents GUID
+    collisions between models that share the same field list.
+    """
+
+    @property
+    def guid(self):
+        return genanki.guid_for(self.fields[0], str(self.model.model_id))
 
 
 class CardData:
@@ -20,7 +43,7 @@ class CardData:
         self.example = example
         self.incorrect_en = incorrect_en
         self.incorrect_ru = incorrect_ru
-        self.safe_filename = english.replace(" ", "_")
+        self.safe_filename = safe_media_name(english)
 
 
 class CardGenerator:
@@ -86,7 +109,7 @@ class CardGenerator:
             # EN → RU typing card
             if self.EN_RU_TYPING in self.selected_models:
                 notes.append(
-                    genanki.Note(
+                    VocabNote(
                         model=self.model_en_ru_typing,
                         fields=[card_data.english, card_data.russian, card_data.example,
                                audio_field, image_field],
@@ -96,7 +119,7 @@ class CardGenerator:
             # RU → EN typing card
             if self.RU_EN_TYPING in self.selected_models:
                 notes.append(
-                    genanki.Note(
+                    VocabNote(
                         model=self.model_ru_en_typing,
                         fields=[card_data.english, card_data.russian, card_data.example,
                                audio_field, image_field],
@@ -106,7 +129,7 @@ class CardGenerator:
             # EN → RU choice card
             if self.EN_RU_CHOICE in self.selected_models:
                 notes.append(
-                    genanki.Note(
+                    VocabNote(
                         model=self.model_en_ru_choice,
                         fields=[card_data.english, card_data.russian, card_data.example,
                                audio_field] + card_data.incorrect_ru + [image_field],
@@ -116,7 +139,7 @@ class CardGenerator:
             # RU → EN choice card
             if self.RU_EN_CHOICE in self.selected_models:
                 notes.append(
-                    genanki.Note(
+                    VocabNote(
                         model=self.model_ru_en_choice,
                         fields=[card_data.english, card_data.russian, card_data.example,
                                audio_field] + card_data.incorrect_en + [image_field],
@@ -126,7 +149,7 @@ class CardGenerator:
             # RU → EN scramble card
             if self.RU_EN_SCRAMBLE in self.selected_models:
                 notes.append(
-                    genanki.Note(
+                    VocabNote(
                         model=self.model_ru_en_scramble,
                         fields=[card_data.english, card_data.russian, card_data.example,
                                audio_field, image_field],
