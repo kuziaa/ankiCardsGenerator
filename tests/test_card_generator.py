@@ -1,5 +1,5 @@
 from anki_generator import derive_deck_id
-from utils.card_generator import CardData, CardGenerator, safe_media_name
+from utils.card_generator import CardData, CardGenerator, build_cloze_text, safe_media_name
 
 
 def make_card_data():
@@ -40,3 +40,38 @@ def test_choice_card_uses_russian_distractors_for_en_ru_choice():
 
     assert len(notes) == 1
     assert notes[0].fields[4:8] == ["зал ожидания", "игровая площадка", "спальная комната", "офис"]
+
+
+def test_build_cloze_text_wraps_first_occurrence_case_insensitive():
+    assert build_cloze_text("dojo", "She trained in the Dojo daily.") ==         "She trained in the {{c1::Dojo}} daily."
+
+
+def test_build_cloze_text_handles_multiword_expressions():
+    assert build_cloze_text("rolled over", "The ship rolled over slowly.") ==         "The ship {{c1::rolled over}} slowly."
+
+
+def test_build_cloze_text_wraps_only_the_first_occurrence():
+    assert build_cloze_text("dojo", "dojo here, dojo there") ==         "{{c1::dojo}} here, dojo there"
+
+
+def test_build_cloze_text_returns_none_when_word_absent():
+    assert build_cloze_text("sport", "One moon sported five thousand.") is None
+    assert build_cloze_text("dojo", "") is None
+
+
+def test_cloze_note_structure():
+    generator = CardGenerator(selected_models=[CardGenerator.EN_CLOZE])
+
+    notes = generator.create_cards(make_card_data())
+
+    assert len(notes) == 1
+    assert notes[0].model.model_id == 1631442296
+    assert notes[0].fields == ["dojo", "She trained in the {{c1::dojo}}.", "додзё"]
+
+
+def test_cloze_note_skipped_when_word_not_in_example():
+    card = CardData("sport", "спорт", "One moon sported five thousand.", [], [])
+
+    notes = CardGenerator(selected_models=[CardGenerator.EN_CLOZE]).create_cards(card)
+
+    assert notes == []
