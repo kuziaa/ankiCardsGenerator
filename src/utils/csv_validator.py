@@ -36,6 +36,49 @@ class ValidationResult:
         return not self.errors
 
 
+def _check_word(result, line_num, english, russian, example,
+                seen_words, seen_names) -> bool:
+    """Word-level checks shared by all input formats. Returns False when the row is unusable."""
+    if not english or not russian:
+        result.errors.append(f"line {line_num}: empty english or russian field")
+        return False
+    if not example:
+        result.warnings.append(f"line {line_num} ({english}): empty example")
+
+    if HOSTILE_CHARS.search(english):
+        result.errors.append(
+            f"line {line_num} ({english}): english contains characters that break "
+            r'file names or card templates: \ / : * ? " < > |')
+
+    word_key = _norm(english)
+    if word_key in seen_words:
+        result.errors.append(
+            f"line {line_num}: duplicate word '{english}' "
+            f"(first seen at line {seen_words[word_key]})")
+    else:
+        seen_words[word_key] = line_num
+
+    media_name = safe_media_name(english)
+    if media_name in seen_names and seen_names[media_name][0] != word_key:
+        result.errors.append(
+            f"line {line_num}: '{english}' collides with "
+            f"'{seen_names[media_name][1]}' after filename sanitization")
+    else:
+        seen_names.setdefault(media_name, (word_key, english))
+    return True
+
+
+def validate_word_entries(entries) -> ValidationResult:
+    """Validate (line_num, word, translation, example) rows from a non-CSV source."""
+    result = ValidationResult()
+    seen_words = {}
+    seen_names = {}
+    for line_num, english, russian, example in entries:
+        result.row_count += 1
+        _check_word(result, line_num, english, russian, example, seen_words, seen_names)
+    return result
+
+
 def validate_csv(csv_path: str) -> ValidationResult:
     """Validate the whole file and collect every problem with physical line numbers."""
     result = ValidationResult()
@@ -88,16 +131,9 @@ def validate_csv(csv_path: str) -> ValidationResult:
         values = {name: row[col[name]].strip() for name in EXPECTED_COLUMNS}
         english, russian = values['english'], values['russian']
 
-        if not english or not russian:
-            result.errors.append(f"line {line_num}: empty english or russian field")
+        if not _check_word(result, line_num, english, russian, values['example'],
+                           seen_words, seen_names):
             continue
-        if not values['example']:
-            result.warnings.append(f"line {line_num} ({english}): empty example")
-
-        if HOSTILE_CHARS.search(english):
-            result.errors.append(
-                f"line {line_num} ({english}): english contains characters that break "
-                r'file names or card templates: \ / : * ? " < > |')
 
         for group, answer, columns in (
             ('EN', english, EXPECTED_COLUMNS[3:7]),
@@ -115,21 +151,5 @@ def validate_csv(csv_path: str) -> ValidationResult:
                     f"line {line_num} ({english}): duplicate {group} distractor: '{dupe}'")
             if any(not v for v in variants):
                 result.warnings.append(f"line {line_num} ({english}): empty {group} distractor")
-
-        word_key = _norm(english)
-        if word_key in seen_words:
-            result.errors.append(
-                f"line {line_num}: duplicate word '{english}' "
-                f"(first seen at line {seen_words[word_key]})")
-        else:
-            seen_words[word_key] = line_num
-
-        media_name = safe_media_name(english)
-        if media_name in seen_names and seen_names[media_name][0] != word_key:
-            result.errors.append(
-                f"line {line_num}: '{english}' collides with "
-                f"'{seen_names[media_name][1]}' after filename sanitization")
-        else:
-            seen_names.setdefault(media_name, (word_key, english))
 
     return result

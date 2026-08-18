@@ -148,7 +148,11 @@ anki-cards-generator --from-md note.md --models all
 ```
 
 Markdown input expects a table with `word`/`english`,
-`translation`/`russian`, and `example` columns. Markdown tables do not include
+`translation`/`russian`, and `example` columns; headers are matched by prefix,
+so vault-style headers such as `Word / Expression`, `Translation (RU)` and
+`Example from the text` also work. `--from-md` and `--csv` are mutually
+exclusive. Markdown rows are validated like CSV rows (duplicates, hostile
+characters, malformed rows are reported with line numbers). Markdown tables do not include
 multiple-choice distractors, so markdown mode supports only models `1`, `2`,
 and `5`; `--models all` maps to those safe models.
 
