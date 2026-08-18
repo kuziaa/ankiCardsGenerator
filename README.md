@@ -4,7 +4,7 @@ An automated tool for creating Anki decks with flashcards for learning English v
 
 ## Features
 
-- 📚 **Flexible Card Types**: Choose from 5 types - Typing (EN→RU, RU→EN), Multiple Choice (EN→RU, RU→EN), Scramble with error counter (RU→EN)
+- 📚 **Flexible Card Types**: Choose from 6 types - Typing (EN→RU, RU→EN), Multiple Choice (EN→RU, RU→EN), Scramble with error counter (RU→EN), Cloze from the example sentence
 - 🔊 **Automatic Audio Generation** for each word using gTTS
 - 🖼️ **Image Downloads** via Google Custom Search API
 - 📊 **Multiple Deck Support** - Create multiple vocabulary decks from different CSV files
@@ -179,6 +179,7 @@ Model selection accepts `all` or comma-separated model numbers:
 - `3` = EN→RU Choice
 - `4` = RU→EN Choice
 - `5` = RU→EN Scramble
+- `6` = EN-RU Cloze (the example sentence with the word hidden, collapsible Russian hint)
 
 For a no-network run, use cached local media only:
 
@@ -275,7 +276,7 @@ Available card models:
 5. RU→EN Scramble
 6. All models
 
-Enter model numbers separated by space (e.g., '1 3 5') or '6' for all: 1 2 3
+Enter model numbers separated by space (e.g., '1 3 5') or '7' for all: 1 2 3
 ✓ Selected models: [1, 2, 3]
 ```
 
@@ -339,6 +340,18 @@ The project supports creating up to 5 different types of flashcards per word:
     - Clicking wrong letter button
     - Typing incorrect character on keyboard
 - **Format**: Shows Russian word, shuffle letter buttons below
+
+### 6. EN-RU Cloze
+- **What**: The example sentence from the book with the word hidden
+- **Use case**: Recalling the word in its real context; a collapsible Russian hint helps without giving the answer away
+- **Format**: Cloze deletion (`{{c1::word}}`); skipped with a warning when the word does not occur verbatim in its example
+
+### Note types v2
+
+Since the v2 migration all decks are built on " v2" note types (new ids, an
+extra `ExampleAudio` field) plus the cloze type. Old decks keep working on the
+v1 types; delete an old deck before regenerating its chapter, otherwise the
+new import creates parallel notes.
 
 ## Multiple Deck Support
 
@@ -470,6 +483,7 @@ Each card contains:
 - 🔊 Audio pronunciation (generated with gTTS, no API keys required)
 - 🖼️ Illustration (if API keys are configured)
 - 📝 Usage example on the back side
+- 🔊 Example-sentence audio on the back (disable with `EXAMPLE_AUDIO=FALSE`)
 
 ## Extending Functionality
 
