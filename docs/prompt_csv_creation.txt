@@ -2,7 +2,7 @@
 
 Convert the following table of English words/expressions into a **CSV table** with the exact headers below:
 
-`english, russian, example, incorrectEnVariant1, incorrectEnVariant2, incorrectEnVariant3, incorrectEnVariant4, incorrectRuVariant1, incorrectRuVariant2, incorrectRuVariant3, incorrectRuVariant4`
+`english,russian,example,incorrectEnVariant1,incorrectEnVariant2,incorrectEnVariant3,incorrectEnVariant4,incorrectRuVariant1,incorrectRuVariant2,incorrectRuVariant3,incorrectRuVariant4`
 
 ### Rules
 
@@ -30,6 +30,14 @@ Convert the following table of English words/expressions into a **CSV table** wi
         
     - They must **NOT match the meaning** of the correct translation.
         
+6. **CSV correctness**
+    
+    - Each data row must be on a **single line** and contain **exactly 11 comma-separated fields**.
+        
+    - Wrap any field that contains a comma in **double quotes**.
+        
+    - No incorrect variant may be equal to the correct answer (case-insensitively, ignoring diacritics), and all four variants within a group must differ from each other.
+        
 
 ### Output requirements
 
@@ -38,6 +46,8 @@ Convert the following table of English words/expressions into a **CSV table** wi
 - The **first row must contain the headers exactly as specified**.
     
 - **Do not add explanations, comments, or formatting outside the CSV.**
+    
+- **Each data row must contain exactly 11 fields; quote fields that contain commas.**
     
 - Each row must correspond to one row from the original table.
     

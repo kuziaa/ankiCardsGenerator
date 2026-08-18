@@ -64,7 +64,9 @@ API_KEY=yourGoogleCustomSearchApiKey
 CX=yourGoogleCustomSearchCx
 
 # Anki deck settings
-DECK_ID=999004
+# DECK_ID is optional: when omitted, a stable ID is derived from the CSV file name
+#DECK_ID=999004
+# The final deck is named DECK_NAME::<csv name> (a subdeck per CSV in Anki)
 DECK_NAME=Custom EN-RU Vocabulary Deck
 ```
 
@@ -124,6 +126,19 @@ Use [ChatGPT Prompt for Vocabulary Extraction](docs/prompt_vocabulary_extraction
 cd src
 python anki_generator.py
 ```
+
+### CSV Validation
+
+Check a CSV file for structural problems (wrong field count, distractors equal
+to the answer, duplicates, hostile characters) without generating a deck:
+
+```bash
+cd src
+python anki_generator.py --validate resources/my_words.csv
+```
+
+The same validation runs automatically before every generation and stops the
+run if errors are found.
 
 ### Interactive Prompts
 
@@ -280,16 +295,17 @@ ankiCardsGenerator/
 │   ├── utils/                    # Utility modules
 │   │   ├── logger.py             # Logging
 │   │   ├── properties_util.py    # Configuration loading
+│   │   ├── csv_validator.py      # Pre-flight CSV validation
 │   │   ├── media_manager.py      # Media management
 │   │   └── card_generator.py     # Card generation with model selection
-│   ├── resources/
-│   │   ├── cards.example.csv     # Example CSV file (template for your data)
-│   │   └── ...                   # Your CSV files (not tracked by Git)
-│   └── media/                    # Generated media files (not tracked)
-│       ├── cards/                # Media for cards.csv
-│       │   ├── *.mp3
-│       │   └── *.jpg
-│       └── ...
+│   └── resources/
+│       ├── cards.example.csv     # Example CSV file (template for your data)
+│       └── ...                   # Your CSV files (not tracked by Git)
+├── media/                        # Generated media files (not tracked)
+│   ├── cards/                    # Media for cards.csv
+│   │   ├── *.mp3
+│   │   └── *.jpg
+│   └── ...
 ├── results/                      # Generated APKG decks (not tracked)
 │   └── *.apkg
 └── logs/                         # Execution logs (not tracked)
@@ -328,7 +344,7 @@ The script is designed with reliability in mind:
 
 - ❌ If an image fails to download - the process continues with the next word
 - ❌ If audio generation fails - the card is created without sound
-- ❌ If CSV contains incorrect rows - they are skipped with logging
+- ✅ CSV is validated before generation - broken rows are reported with physical line numbers and the run stops
 - ✅ All errors are recorded in `logs/anki_generator.log`
 
 ## Card Types Created
@@ -342,7 +358,7 @@ The project supports creating up to 5 different types of flashcards per word. Yo
 5. **RU→EN Scramble** - Arrange the letters of the English word in the correct order (includes error counter)
 
 Each card contains:
-- 🔊 Audio pronunciation (if API keys are configured)
+- 🔊 Audio pronunciation (generated with gTTS, no API keys required)
 - 🖼️ Illustration (if API keys are configured)
 - 📝 Usage example on the back side
 
