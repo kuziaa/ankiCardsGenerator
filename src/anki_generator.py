@@ -23,9 +23,16 @@ from utils.properties_util import load_properties
 from utils.media_manager import MediaManager
 from utils.card_generator import CardGenerator, CardData, create_deck_from_cards
 from utils.csv_validator import validate_csv
+from utils.md_loader import MarkdownTableError, load_cards_from_markdown
 
 # Initialize logger
 logger = setup_logger(__name__)
+
+MARKDOWN_SAFE_MODELS = [
+    CardGenerator.EN_RU_TYPING,
+    CardGenerator.RU_EN_TYPING,
+    CardGenerator.RU_EN_SCRAMBLE,
+]
 
 
 @dataclass
@@ -33,6 +40,7 @@ class CliOptions:
     """Resolved command-line options for one run."""
 
     csv_path: Path = None
+    markdown_path: Path = None
     selected_models: list = None
     validate_only: bool = False
     offline: bool = False
@@ -69,7 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--validate',
         action='store_true',
-        help="Validate CSV and exit without generating a deck.",
+        help="Validate input and exit without generating a deck.",
     )
     parser.add_argument(
         '--offline',
@@ -79,7 +87,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         '--from-md',
         metavar='PATH',
-        help="Create cards from an Obsidian markdown table (planned, not implemented).",
+        help="Create cards from an Obsidian markdown table.",
     )
     parser.add_argument(
         '--push',
@@ -100,6 +108,13 @@ def resolve_csv_path(csv_arg: str, default_resources_dir: Path) -> Path:
             return resource_csv
 
     raise FileNotFoundError(csv_arg)
+
+
+def resolve_existing_path(path_arg: str) -> Path:
+    path = Path(path_arg).expanduser()
+    if path.exists():
+        return path
+    raise FileNotFoundError(path_arg)
 
 
 def parse_model_selection(models_arg: str) -> list:
@@ -126,20 +141,38 @@ def parse_args(argv: list = None) -> CliOptions:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    if args.from_md:
-        parser.error("--from-md is planned but not implemented yet")
     if args.push:
         parser.error("--push is planned but not implemented yet")
 
     options = CliOptions(validate_only=args.validate, offline=args.offline)
-    if args.csv_file:
+    if args.from_md:
+        try:
+            options.markdown_path = resolve_existing_path(args.from_md)
+        except FileNotFoundError:
+            logger.error(f"✗ File {args.from_md} not found!")
+            raise
+    elif args.csv_file:
         try:
             options.csv_path = resolve_csv_path(args.csv_file, resources_dir())
         except FileNotFoundError:
             logger.error(f"✗ File {args.csv_file} not found!")
             raise
 
-    if args.models and not args.validate:
+    if args.from_md:
+        if args.models and args.models.lower() == 'all':
+            options.selected_models = MARKDOWN_SAFE_MODELS.copy()
+        elif args.models:
+            try:
+                selected_models = parse_model_selection(args.models)
+            except ValueError as e:
+                parser.error(str(e))
+            invalid_models = [model for model in selected_models if model not in MARKDOWN_SAFE_MODELS]
+            if invalid_models:
+                parser.error("--from-md supports only models 1, 2, and 5")
+            options.selected_models = selected_models
+        else:
+            options.selected_models = MARKDOWN_SAFE_MODELS.copy()
+    elif args.models and not args.validate:
         try:
             options.selected_models = parse_model_selection(args.models)
         except ValueError as e:
@@ -338,9 +371,9 @@ def load_cards_from_csv(csv_file_path: str) -> list:
         return []
 
 
-def derive_deck_id(csv_stem: str) -> int:
-    """Stable per-CSV deck ID so different CSVs never merge on import."""
-    return (zlib.crc32(csv_stem.encode('utf-8')) % (1 << 30)) + (1 << 30)
+def derive_deck_id(source_stem: str) -> int:
+    """Stable per-source deck ID so different inputs never merge on import."""
+    return (zlib.crc32(source_stem.encode('utf-8')) % (1 << 30)) + (1 << 30)
 
 
 def _report_csv_validation(csv_path: str) -> bool:
@@ -355,8 +388,21 @@ def _report_csv_validation(csv_path: str) -> bool:
     return report.ok
 
 
-def validate_command(csv_path: Path = None) -> bool:
-    """--validate mode: check a CSV file and exit without generating a deck."""
+def _report_markdown_validation(markdown_path: Path) -> bool:
+    try:
+        cards = load_cards_from_markdown(markdown_path)
+    except MarkdownTableError as e:
+        logger.error(f"Markdown: {e}")
+        return False
+    logger.info(f"Markdown validation: {len(cards)} rows, 0 errors, 0 warnings")
+    return True
+
+
+def validate_command(csv_path: Path = None, markdown_path: Path = None) -> bool:
+    """--validate mode: check an input file and exit without generating a deck."""
+    if markdown_path is not None:
+        return _report_markdown_validation(markdown_path)
+
     if csv_path is None:
         csv_path = select_csv_file(resources_dir())
         if not csv_path:
@@ -393,49 +439,59 @@ def main(options: CliOptions = None):
     csv_resources_dir = resources_dir()
     media_root_dir = root_path / 'media'
     
-    # Select CSV file (let user choose if multiple exist)
-    selected_csv = options.csv_path or select_csv_file(csv_resources_dir)
-    if not selected_csv:
-        logger.error("✗ No CSV file selected. Exiting.")
-        return False
-    
-    # Validate CSV before the expensive media phase
-    if not _report_csv_validation(str(selected_csv)):
-        logger.error("✗ CSV validation failed. Fix the errors above and rerun.")
-        return False
-    
+    selected_csv = None
+    cards_data = None
+    if options.markdown_path:
+        source_name_no_ext = options.markdown_path.stem
+        try:
+            cards_data = load_cards_from_markdown(options.markdown_path)
+        except MarkdownTableError as e:
+            logger.error(f"Markdown: {e}")
+            return False
+    else:
+        # Select CSV file (let user choose if multiple exist)
+        selected_csv = options.csv_path or select_csv_file(csv_resources_dir)
+        if not selected_csv:
+            logger.error("✗ No CSV file selected. Exiting.")
+            return False
+
+        # Validate CSV before the expensive media phase
+        if not _report_csv_validation(str(selected_csv)):
+            logger.error("✗ CSV validation failed. Fix the errors above and rerun.")
+            return False
+
+        source_name_no_ext = selected_csv.stem
+
     # Select card models to use
     selected_models = options.selected_models or select_card_models()
     if not selected_models:
         logger.error("✗ No models selected. Exiting.")
         return False
     
-    # Get CSV filename without extension for subfolder
-    csv_name_no_ext = selected_csv.stem
-    
     # Deck ID: explicit config override wins, otherwise stable per-CSV ID
-    deck_id = int(deck_id_override) if deck_id_override else derive_deck_id(csv_name_no_ext)
+    deck_id = int(deck_id_override) if deck_id_override else derive_deck_id(source_name_no_ext)
     
-    # Create media subdirectory for this CSV file
-    media_dir = media_root_dir / csv_name_no_ext
+    # Create media subdirectory for this input file
+    media_dir = media_root_dir / source_name_no_ext
     media_dir.mkdir(parents=True, exist_ok=True)
     
     # Create results directory for output APKG files
     results_dir = root_path / 'results'
     results_dir.mkdir(parents=True, exist_ok=True)
     
-    # Set output file name based on CSV file name
-    output_file = results_dir / f"{csv_name_no_ext}.apkg"
+    # Set output file name based on input file name
+    output_file = results_dir / f"{source_name_no_ext}.apkg"
     
     # Hierarchical deck name: Anki builds a subdeck per CSV under the base name
-    deck_name = f"{deck_name}::{csv_name_no_ext}"
+    deck_name = f"{deck_name}::{source_name_no_ext}"
     
     logger.info(f"Media files will be saved to: {media_dir}")
     logger.info(f"Output file: {output_file}")
     logger.info(f"Card models to use: {len(selected_models)} model(s)")
     
     # Load flashcards from CSV
-    cards_data = load_cards_from_csv(str(selected_csv))
+    if cards_data is None:
+        cards_data = load_cards_from_csv(str(selected_csv))
     
     if not cards_data:
         logger.error("✗ No flashcards to process. Exiting.")
@@ -531,7 +587,7 @@ def cli(argv: list = None) -> int:
     try:
         options = parse_args(argv)
         if options.validate_only:
-            success = validate_command(options.csv_path)
+            success = validate_command(options.csv_path, options.markdown_path)
         else:
             success = main(options)
         return 0 if success else 1

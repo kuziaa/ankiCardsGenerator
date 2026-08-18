@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from anki_generator import parse_args, parse_model_selection, resolve_csv_path
+from anki_generator import cli, parse_args, parse_model_selection, resolve_csv_path
 from utils.card_generator import CardGenerator
 
 
@@ -45,6 +45,55 @@ def test_validate_mode_ignores_invalid_models():
 
     assert options.validate_only is True
     assert options.selected_models is None
+
+
+def test_from_md_resolves_markdown_path_and_models_all_uses_markdown_safe_models(tmp_path):
+    md_path = tmp_path / "note.md"
+    md_path.write_text(
+        """
+| Word | Translation | Example |
+| --- | --- | --- |
+| dojo | додзё | She trained in the dojo. |
+""",
+        encoding="utf-8",
+    )
+
+    options = parse_args(["--from-md", str(md_path), "--models", "all"])
+
+    assert options.markdown_path == md_path
+    assert options.csv_path is None
+    assert options.selected_models == [1, 2, 5]
+
+
+def test_from_md_rejects_choice_models_with_usage_error(tmp_path):
+    md_path = tmp_path / "note.md"
+    md_path.write_text(
+        """
+| Word | Translation | Example |
+| --- | --- | --- |
+| dojo | додзё | She trained in the dojo. |
+""",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args(["--from-md", str(md_path), "--models", "3"])
+
+    assert exc_info.value.code == 2
+
+
+def test_validate_from_md_returns_success_for_valid_markdown(tmp_path):
+    md_path = tmp_path / "note.md"
+    md_path.write_text(
+        """
+| Word | Translation | Example |
+| --- | --- | --- |
+| dojo | додзё | She trained in the dojo. |
+""",
+        encoding="utf-8",
+    )
+
+    assert cli(["--validate", "--from-md", str(md_path)]) == 0
 
 
 def test_planned_flags_return_usage_error():
