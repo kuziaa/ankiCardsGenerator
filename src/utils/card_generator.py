@@ -22,6 +22,18 @@ ALL_MODELS = [
     en_ru_cloze_model.model,
 ]
 
+# Note-type names retired by the v2 migration; mature cards may still live on them
+LEGACY_MODEL_NAMES = [
+    "EN-RU Typing Model", "RU-EN Typing Model",
+    "EN-RU Choice Model", "RU-EN Choice Model",
+    "EN-RU Scramble Model", "RU-EN Scramble Model",
+]
+
+
+def model_names_for_sync() -> list:
+    """Model names to scan for mature words: current types plus retired v1 names."""
+    return [model.name for model in ALL_MODELS] + LEGACY_MODEL_NAMES
+
 
 def build_cloze_text(word: str, example: str):
     """Wrap the first whole-word, case-insensitive occurrence of word in {{c1::...}}."""

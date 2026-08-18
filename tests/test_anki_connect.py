@@ -196,3 +196,22 @@ def test_trigger_sync_returns_false_on_api_error():
             raise AnkiConnectError("sync failed")
 
     assert trigger_sync(FailingClient()) is False
+
+
+def test_ensure_models_marks_cloze_models():
+    from models import en_ru_cloze_model
+    client = FakeClient(results={"modelNames": []})
+
+    ensure_models(client, [en_ru_cloze_model.model])
+
+    params = [c for c in client.calls if c[0] == "createModel"][0][1]
+    assert params["isCloze"] is True
+
+
+def test_ensure_models_marks_standard_models_as_non_cloze():
+    client = FakeClient(results={"modelNames": []})
+
+    ensure_models(client, [FakeModel("Missing Model")])
+
+    params = [c for c in client.calls if c[0] == "createModel"][0][1]
+    assert params["isCloze"] is False

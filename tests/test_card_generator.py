@@ -99,3 +99,13 @@ def test_example_audio_field_empty_without_path():
     notes = CardGenerator(selected_models=[CardGenerator.EN_RU_TYPING]).create_cards(make_card_data())
 
     assert notes[0].fields[-1] == ""
+
+
+def test_sync_names_cover_v2_cloze_and_legacy():
+    from utils.card_generator import model_names_for_sync
+    names = model_names_for_sync()
+    assert "EN-RU Typing Model v2" in names
+    assert "EN-RU Cloze Model" in names
+    assert "EN-RU Typing Model" in names
+    assert "EN-RU Scramble Model" in names
+    assert "RU-EN Scramble Model" in names

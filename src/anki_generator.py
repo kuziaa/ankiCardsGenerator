@@ -443,10 +443,10 @@ def _load_and_validate_markdown(markdown_path: Path):
 
 def _sync_learned_words_from_anki(ledger_path: Path, anki_url: str) -> None:
     """Best-effort: record words already mature in Anki as known."""
-    from utils.card_generator import ALL_MODELS
+    from utils.card_generator import model_names_for_sync
     client = AnkiConnectClient(url=anki_url)
     try:
-        words = fetch_mature_words(client, [model.name for model in ALL_MODELS])
+        words = fetch_mature_words(client, model_names_for_sync())
     except AnkiNotAvailableError:
         logger.info("Anki is not running - skipping learned-words sync")
         return

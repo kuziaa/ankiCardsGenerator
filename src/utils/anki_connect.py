@@ -8,6 +8,8 @@ missing Anki raises AnkiNotAvailableError with an actionable message.
 import base64
 from pathlib import Path
 
+import genanki
+
 import requests
 
 from utils.logger import setup_logger
@@ -74,6 +76,7 @@ def ensure_models(client, models) -> list:
                 {"Name": template["name"], "Front": template["qfmt"], "Back": template["afmt"]}
                 for template in model.templates
             ],
+            isCloze=(getattr(model, "model_type", 0) == genanki.Model.CLOZE),
         )
         created.append(model.name)
     return created
