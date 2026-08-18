@@ -127,14 +127,47 @@ cd src
 python anki_generator.py
 ```
 
+Running without arguments starts the interactive flow: CSV selection first,
+then card model selection.
+
+### Non-Interactive CLI
+
+Use `--csv` and `--models` to generate a deck without prompts:
+
+```bash
+python src/anki_generator.py --csv cards.example.csv --models 1,2,5
+```
+
+CSV paths are resolved in this order:
+
+1. The path exactly as provided, absolute or relative to the current directory
+2. If only a file name was provided, `src/resources/<file name>`
+
+Model selection accepts `all` or comma-separated model numbers:
+
+- `1` = EN→RU Typing
+- `2` = RU→EN Typing
+- `3` = EN→RU Choice
+- `4` = RU→EN Choice
+- `5` = RU→EN Scramble
+
+For a no-network run, use cached local media only:
+
+```bash
+python src/anki_generator.py --csv cards.example.csv --models all --offline
+```
+
+Exit codes are stable for scripted usage: `0` means success, `1` means a
+runtime failure such as CSV validation errors or a missing CSV file, and `2`
+means invalid CLI usage.
+
 ### CSV Validation
 
 Check a CSV file for structural problems (wrong field count, distractors equal
 to the answer, duplicates, hostile characters) without generating a deck:
 
 ```bash
-cd src
-python anki_generator.py --validate resources/my_words.csv
+python src/anki_generator.py --validate --csv my_words.csv
 ```
 
 The same validation runs automatically before every generation and stops the

@@ -40,7 +40,8 @@ def _looks_like_mp3(data: bytes) -> bool:
 class MediaManager:
     """Class for managing media file downloads and generation (audio, images)."""
 
-    def __init__(self, media_dir: str = "media", api_key: str = "", cx: str = ""):
+    def __init__(self, media_dir: str = "media", api_key: str = "", cx: str = "",
+                 offline: bool = False):
         """
         Initialize the media manager.
 
@@ -48,10 +49,12 @@ class MediaManager:
             media_dir: Directory for saving media files
             api_key: Google Custom Search API key
             cx: Google Custom Search CX parameter
+            offline: Use only validated cached media files and skip network calls
         """
         self.media_dir = Path(media_dir)
         self.api_key = api_key
         self.cx = cx
+        self.offline = offline
         self.has_api_keys = bool(api_key and cx)
         self.search_disabled = False
         self.session = self._make_session()
@@ -59,7 +62,7 @@ class MediaManager:
         # Create media directory if it doesn't exist
         self.media_dir.mkdir(exist_ok=True)
 
-        if not self.has_api_keys:
+        if not self.has_api_keys and not self.offline:
             logger.warning("API keys for Google Custom Search not found. "
                          "Image downloading will be skipped.")
 
@@ -99,8 +102,12 @@ class MediaManager:
             if _looks_like_mp3(audio_path.read_bytes()):
                 logger.debug(f"Audio file already exists: {audio_path}")
                 return str(audio_path)
-            logger.warning(f"Cached audio is corrupt, regenerating: {audio_path}")
+            logger.warning(f"Cached audio is corrupt, removing: {audio_path}")
             audio_path.unlink()
+
+        if self.offline:
+            logger.debug(f"Skipping audio generation for '{text}' (offline mode)")
+            return None
 
         for attempt in range(1, TTS_ATTEMPTS + 1):
             try:
@@ -136,6 +143,20 @@ class MediaManager:
         Returns:
             Path to downloaded image or None if error/missing keys
         """
+        image_path = self.media_dir / f"{safe_filename}.jpg"
+
+        # Reuse the cached file only when it passes validation
+        if image_path.exists():
+            if self._valid_cached_image(image_path):
+                logger.debug(f"Image already exists: {image_path}")
+                return str(image_path)
+            logger.warning(f"Cached image is corrupt, removing: {image_path}")
+            image_path.unlink()
+
+        if self.offline:
+            logger.debug(f"Skipping image download for '{search_term}' (offline mode)")
+            return None
+
         # Skip if API keys are not loaded
         if not self.has_api_keys:
             logger.debug(f"Skipping image download for '{search_term}' "
@@ -146,16 +167,6 @@ class MediaManager:
         if self.search_disabled:
             logger.debug(f"Skipping image search for '{search_term}' (quota exhausted)")
             return None
-
-        image_path = self.media_dir / f"{safe_filename}.jpg"
-
-        # Reuse the cached file only when it passes validation
-        if image_path.exists():
-            if self._valid_cached_image(image_path):
-                logger.debug(f"Image already exists: {image_path}")
-                return str(image_path)
-            logger.warning(f"Cached image is corrupt, re-downloading: {image_path}")
-            image_path.unlink()
 
         try:
             # Search for images via Google Custom Search

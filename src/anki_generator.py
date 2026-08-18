@@ -8,10 +8,12 @@ This script creates an Anki deck with flashcards from a CSV file, including:
 - Creation of 5 types of flashcards (typing, choice, scramble)
 """
 
+import argparse
 import csv
 import random
 import sys
 import zlib
+from dataclasses import dataclass
 from pathlib import Path
 
 import genanki
@@ -24,6 +26,126 @@ from utils.csv_validator import validate_csv
 
 # Initialize logger
 logger = setup_logger(__name__)
+
+
+@dataclass
+class CliOptions:
+    """Resolved command-line options for one run."""
+
+    csv_path: Path = None
+    selected_models: list = None
+    validate_only: bool = False
+    offline: bool = False
+
+
+def project_root() -> Path:
+    return Path(__file__).parent.parent
+
+
+def resources_dir() -> Path:
+    return project_root() / 'src' / 'resources'
+
+
+def _model_help() -> str:
+    models = ', '.join(f"{number}={name}" for number, name in CardGenerator.MODEL_NAMES.items())
+    return f"Card models to generate: all or comma-separated numbers ({models})"
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Generate Anki decks from vocabulary CSV files."
+    )
+    parser.add_argument(
+        '--csv',
+        dest='csv_file',
+        metavar='PATH',
+        help="CSV path. Bare file names are also searched in src/resources/.",
+    )
+    parser.add_argument(
+        '--models',
+        metavar='LIST',
+        help=_model_help(),
+    )
+    parser.add_argument(
+        '--validate',
+        action='store_true',
+        help="Validate CSV and exit without generating a deck.",
+    )
+    parser.add_argument(
+        '--offline',
+        action='store_true',
+        help="Use only cached local media; do not call TTS or image search services.",
+    )
+    parser.add_argument(
+        '--from-md',
+        metavar='PATH',
+        help="Create cards from an Obsidian markdown table (planned, not implemented).",
+    )
+    parser.add_argument(
+        '--push',
+        action='store_true',
+        help="Push cards directly to Anki via AnkiConnect (planned, not implemented).",
+    )
+    return parser
+
+
+def resolve_csv_path(csv_arg: str, default_resources_dir: Path) -> Path:
+    csv_path = Path(csv_arg).expanduser()
+    if csv_path.exists():
+        return csv_path
+
+    if csv_path.parent == Path('.'):
+        resource_csv = default_resources_dir / csv_path.name
+        if resource_csv.exists():
+            return resource_csv
+
+    raise FileNotFoundError(csv_arg)
+
+
+def parse_model_selection(models_arg: str) -> list:
+    if models_arg.lower() == 'all':
+        return sorted(CardGenerator.MODEL_NAMES.keys())
+
+    try:
+        selected_models = sorted({int(part.strip()) for part in models_arg.split(',') if part.strip()})
+    except ValueError as e:
+        raise ValueError("models must be 'all' or comma-separated numbers") from e
+
+    if not selected_models:
+        raise ValueError("models list cannot be empty")
+
+    valid_models = set(CardGenerator.MODEL_NAMES.keys())
+    invalid_models = [model for model in selected_models if model not in valid_models]
+    if invalid_models:
+        raise ValueError(f"unknown model number(s): {', '.join(map(str, invalid_models))}")
+
+    return selected_models
+
+
+def parse_args(argv: list = None) -> CliOptions:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+
+    if args.from_md:
+        parser.error("--from-md is planned but not implemented yet")
+    if args.push:
+        parser.error("--push is planned but not implemented yet")
+
+    options = CliOptions(validate_only=args.validate, offline=args.offline)
+    if args.csv_file:
+        try:
+            options.csv_path = resolve_csv_path(args.csv_file, resources_dir())
+        except FileNotFoundError:
+            logger.error(f"✗ File {args.csv_file} not found!")
+            raise
+
+    if args.models and not args.validate:
+        try:
+            options.selected_models = parse_model_selection(args.models)
+        except ValueError as e:
+            parser.error(str(e))
+
+    return options
 
 
 def find_csv_files(resources_dir: Path) -> list:
@@ -233,22 +355,19 @@ def _report_csv_validation(csv_path: str) -> bool:
     return report.ok
 
 
-def validate_command(csv_arg: str = None) -> bool:
+def validate_command(csv_path: Path = None) -> bool:
     """--validate mode: check a CSV file and exit without generating a deck."""
-    if csv_arg:
-        csv_path = Path(csv_arg)
-        if not csv_path.exists():
-            logger.error(f"✗ File {csv_arg} not found!")
-            return False
-    else:
-        csv_path = select_csv_file(Path(__file__).parent / 'resources')
+    if csv_path is None:
+        csv_path = select_csv_file(resources_dir())
         if not csv_path:
             return False
     return _report_csv_validation(str(csv_path))
 
 
-def main():
+def main(options: CliOptions = None):
     """Main function to generate Anki deck."""
+    if options is None:
+        options = CliOptions()
     
     logger.info("=" * 60)
     logger.info("Starting Anki Cards Generator")
@@ -270,12 +389,12 @@ def main():
     deck_name = properties.get('DECK_NAME', 'Custom EN-RU Vocabulary Deck')
     
     # Transform paths relative to project root directory
-    root_path = Path(__file__).parent.parent
-    resources_dir = root_path / 'src' / 'resources'
+    root_path = project_root()
+    csv_resources_dir = resources_dir()
     media_root_dir = root_path / 'media'
     
     # Select CSV file (let user choose if multiple exist)
-    selected_csv = select_csv_file(resources_dir)
+    selected_csv = options.csv_path or select_csv_file(csv_resources_dir)
     if not selected_csv:
         logger.error("✗ No CSV file selected. Exiting.")
         return False
@@ -286,7 +405,7 @@ def main():
         return False
     
     # Select card models to use
-    selected_models = select_card_models()
+    selected_models = options.selected_models or select_card_models()
     if not selected_models:
         logger.error("✗ No models selected. Exiting.")
         return False
@@ -323,7 +442,12 @@ def main():
         return False
     
     # Initialize media manager and card generator with selected models
-    media_manager = MediaManager(media_dir=str(media_dir), api_key=api_key, cx=cx)
+    media_manager = MediaManager(
+        media_dir=str(media_dir),
+        api_key=api_key,
+        cx=cx,
+        offline=options.offline,
+    )
     card_generator = CardGenerator(selected_models=selected_models)
     
     all_notes = []
@@ -404,12 +528,14 @@ def main():
 
 if __name__ == "__main__":
     try:
-        if '--validate' in sys.argv:
-            extra_args = [arg for arg in sys.argv[1:] if arg != '--validate']
-            success = validate_command(extra_args[0] if extra_args else None)
+        options = parse_args(sys.argv[1:])
+        if options.validate_only:
+            success = validate_command(options.csv_path)
         else:
-            success = main()
+            success = main(options)
         sys.exit(0 if success else 1)
+    except FileNotFoundError:
+        sys.exit(1)
     except KeyboardInterrupt:
         logger.info("\n⚠ Process interrupted by user")
         sys.exit(1)
