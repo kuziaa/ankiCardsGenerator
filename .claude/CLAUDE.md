@@ -28,6 +28,8 @@ book text. Only `cards.example.csv` is tracked.
     (models 1, 2, 5 only; mutually exclusive with `--csv`)
   - `--validate` — check the input and exit; `--offline` — cached media only;
     `--include-known` — ignore the known-words ledger
+  - `--push` — send cards into a running Anki via AnkiConnect instead of
+    writing an `.apkg`; `--overwrite-media` — with push, replace collection media
   - no flags — interactive prompts
 - Exit codes: `0` success, `1` runtime failure, `2` CLI usage error
 
@@ -75,3 +77,8 @@ stays separate.
   atomically; a corrupt cached file is deleted and re-fetched, never shipped.
 - `config.properties` is optional: without Google API keys images are
   skipped; audio needs no keys (gTTS).
+- Anki integration (`utils/anki_connect.py`) is best-effort by design: the
+  learned-words sync silently skips when Anki is closed, while `--push` fails
+  loudly with a hint to rerun without the flag. Push matches notes by first
+  field + note type (same identity as the GUID) and updates fields in place,
+  preserving scheduling.

@@ -96,13 +96,6 @@ def test_validate_from_md_returns_success_for_valid_markdown(tmp_path):
     assert cli(["--validate", "--from-md", str(md_path)]) == 0
 
 
-def test_planned_flags_return_usage_error():
-    with pytest.raises(SystemExit) as exc_info:
-        parse_args(["--push"])
-
-    assert exc_info.value.code == 2
-
-
 def test_from_md_and_csv_are_mutually_exclusive():
     with pytest.raises(SystemExit) as exc_info:
         parse_args(["--from-md", "x.md", "--csv", "y.csv"])
@@ -114,3 +107,17 @@ def test_include_known_flag_is_parsed():
     options = parse_args(["--include-known"])
 
     assert options.include_known is True
+
+
+def test_overwrite_media_requires_push():
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args(["--overwrite-media"])
+
+    assert exc_info.value.code == 2
+
+
+def test_push_options_are_parsed():
+    options = parse_args(["--push", "--overwrite-media"])
+
+    assert options.push is True
+    assert options.overwrite_media is True

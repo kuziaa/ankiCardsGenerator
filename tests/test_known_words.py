@@ -1,5 +1,5 @@
 from utils.card_generator import CardData
-from utils.known_words import filter_known_words, load_known_words, record_known_words
+from utils.known_words import filter_known_words, load_known_words, record_known_words, record_word_list
 
 
 def make_card(english):
@@ -57,6 +57,25 @@ def test_recording_does_not_reassign_source(tmp_path):
     record_known_words(path, [make_card("dojo")], "prologue")
 
     added = record_known_words(path, [make_card("dojo")], "chapter-1")
+
+    assert added == 0
+    assert load_known_words(path)["dojo"]["source"] == "prologue"
+
+
+def test_record_word_list_adds_words_with_source(tmp_path):
+    path = tmp_path / "known_words.json"
+
+    added = record_word_list(path, ["dojo", "hinges"], "anki")
+
+    assert added == 2
+    assert load_known_words(path)["dojo"]["source"] == "anki"
+
+
+def test_record_word_list_keeps_existing_source(tmp_path):
+    path = tmp_path / "known_words.json"
+    record_known_words(path, [make_card("dojo")], "prologue")
+
+    added = record_word_list(path, ["dojo"], "anki")
 
     assert added == 0
     assert load_known_words(path)["dojo"]["source"] == "prologue"
