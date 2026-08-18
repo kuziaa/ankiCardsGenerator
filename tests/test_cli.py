@@ -63,7 +63,7 @@ def test_from_md_resolves_markdown_path_and_models_all_uses_markdown_safe_models
 
     assert options.markdown_path == md_path
     assert options.csv_path is None
-    assert options.selected_models == [1, 2, 5]
+    assert options.selected_models == [1, 2, 5, 6]
 
 
 def test_from_md_rejects_choice_models_with_usage_error(tmp_path):
@@ -131,3 +131,38 @@ def test_example_audio_enabled_by_default():
 def test_example_audio_disabled_by_config():
     assert example_audio_enabled({"EXAMPLE_AUDIO": "FALSE"}) is False
     assert example_audio_enabled({"EXAMPLE_AUDIO": "false "}) is False
+
+
+def write_md_fixture(tmp_path):
+    md_path = tmp_path / "words.md"
+    nl = chr(10)
+    md_path.write_text(
+        "| Word | Translation | Example |" + nl
+        + "| --- | --- | --- |" + nl
+        + "| dojo | додзё | She trained in the dojo. |" + nl,
+        encoding="utf-8",
+    )
+    return md_path
+
+
+def test_all_includes_cloze():
+    assert parse_model_selection("all") == [1, 2, 3, 4, 5, 6]
+
+
+def test_from_md_default_models_include_cloze(tmp_path):
+    options = parse_args(["--from-md", str(write_md_fixture(tmp_path))])
+
+    assert options.selected_models == [1, 2, 5, 6]
+
+
+def test_from_md_allows_cloze_explicitly(tmp_path):
+    options = parse_args(["--from-md", str(write_md_fixture(tmp_path)), "--models", "6"])
+
+    assert options.selected_models == [6]
+
+
+def test_from_md_still_rejects_choice_models(tmp_path):
+    with pytest.raises(SystemExit) as exc_info:
+        parse_args(["--from-md", str(write_md_fixture(tmp_path)), "--models", "3"])
+
+    assert exc_info.value.code == 2
