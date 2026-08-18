@@ -2,7 +2,7 @@ import genanki
 
 model = genanki.Model(
     234556757,  # Unique model ID
-    "EN-RU Scramble Model",
+    "RU-EN Scramble Model",
     fields=[
         {"name": "English"},
         {"name": "Russian"},

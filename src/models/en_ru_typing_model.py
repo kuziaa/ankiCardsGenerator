@@ -1,69 +1,9 @@
-import genanki
+from models.factory import make_typing_model
 
-model = genanki.Model(
-    73727116,
-    "EN-RU Typing Model",
-    fields=[
-        {"name": "English"},
-        {"name": "Russian"},
-        {"name": "Example"},
-        {"name": "Audio"},
-        {"name": "Image"},
-    ],
-    templates=[
-        {
-            "name": "EN-RU Typing",
-            "qfmt": """
-                <div class="image-front">
-                    {{Image}}
-                </div>
-                <h2>{{English}}</h2>
-                {{Audio}}<br><br><br>
-                {{type:Russian}}
-            """,
-            "afmt": """
-                <div class="image-back">
-                    {{Image}}
-                </div>
-                <h2>{{English}}</h2>
-                {{Audio}}<br><br><br>
-                {{type:Russian}}
-
-                <hr id=answer>
-                {{Example}}
-            """,
-        }
-    ],
-    css="""
-        .card {
-            font-family: arial;
-            font-size: 20px;
-            text-align: center;
-            color: black;
-            background-color: white;
-        }
-
-        /* Limit size and blur image on front side */
-        .image-front img {
-            filter: blur(8px);
-            transition: filter 0.5s ease;
-            max-width: 300px;
-            max-height: 200px;
-            width: auto;
-            height: auto;
-            margin: 0 auto;
-            display: block;
-        }
-        
-        /* Limit size and normal image on back side */
-        .image-back img {
-            filter: none;
-            max-width: 300px;
-            max-height: 200px;
-            width: auto;
-            height: auto;
-            margin: 0 auto;
-            display: block;
-        }
-    """
+model = make_typing_model(
+    model_id=73727116,
+    direction="EN-RU",
+    prompt_field="English",
+    answer_field="Russian",
+    audio_in_answer=True,
 )
