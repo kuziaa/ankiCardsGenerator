@@ -286,8 +286,8 @@ The project supports creating up to 5 different types of flashcards per word:
 
 ### 2. RU→EN Typing
 - **What**: Translate Russian to English by typing
-- **Use case**: Active production of English translation
-- **Format**: Shows Russian word, you type English translation
+- **Use case**: Active production of English translation + dictation by ear
+- **Format**: Shows Russian word and plays the English audio, you type the English word you hear
 
 ### 3. EN→RU Choice
 - **What**: Select correct Russian translation from 4 options
