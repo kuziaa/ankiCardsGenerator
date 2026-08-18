@@ -4,14 +4,13 @@ Quick start script for the project.
 Checks dependencies and runs deck generation.
 """
 
-import subprocess
 import sys
 from pathlib import Path
 
 def check_python_version():
     """Check Python version."""
-    if sys.version_info < (3, 7):
-        print("❌ Python 3.7 or higher is required")
+    if sys.version_info < (3, 9):
+        print("❌ Python 3.9 or higher is required")
         print(f"   Current version: {sys.version}")
         return False
     print(f"✅ Python version: {sys.version.split()[0]}")
@@ -32,31 +31,31 @@ def check_requirements():
     
     if missing:
         print(f"\n⚠️  Install missing packages:")
-        print(f"   pip install -r requirements.txt")
+        print(f"   pip install -e .")
         return False
     
     return True
 
 def check_config():
-    """Check if configuration file exists."""
+    """Check optional configuration file state."""
     config_path = Path("config.properties")
     sample_path = Path("config.properties.sample")
     
     if not config_path.exists():
         if sample_path.exists():
-            print("⚠️  config.properties not found")
-            print(f"   Copy from template: cp config.properties.sample config.properties")
+            print("⚠️  config.properties not found; image downloads will be skipped")
+            print("   Copy from template when needed: cp config.properties.sample config.properties")
+            return True
         else:
             print("❌ Neither config.properties nor config.properties.sample found")
             return False
-        return False
     
     print("✅ config.properties found")
     return True
 
 def check_csv():
-    """Check if CSV file with data exists."""
-    csv_path = Path("src/resources/cards.csv")
+    """Check if the example CSV file exists."""
+    csv_path = Path("src/resources/cards.example.csv")
     
     if not csv_path.exists():
         print(f"❌ CSV file not found: {csv_path}")
@@ -113,8 +112,8 @@ def main():
     if all_passed:
         print("\n✨ All checks passed!")
         print("\n🚀 To run, execute:")
-        print("   cd src")
-        print("   python anki_generator.py")
+        print("   anki-cards-generator --validate --csv cards.example.csv")
+        print("   anki-cards-generator --csv cards.example.csv --models all --offline")
     else:
         print("\n⚠️  Fix errors before running")
         return 1

@@ -2,6 +2,10 @@
 .git/
 config.properties
 __pycache__/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
 logs/
 src/resources/*.csv
 !src/resources/cards.example.csv
