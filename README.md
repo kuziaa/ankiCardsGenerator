@@ -130,6 +130,21 @@ then card model selection.
 
 ### Non-Interactive CLI
 
+All options at a glance (run `anki-cards-generator --help` for the same list):
+
+| Option | Description |
+|--------|-------------|
+| `--csv PATH` | CSV input file; bare file names are also searched in `src/resources/` |
+| `--from-md PATH` | Obsidian markdown note as input (models 1, 2, 5 only); mutually exclusive with `--csv` |
+| `--models LIST` | Card models to generate: `all` or comma-separated numbers, e.g. `1,2,5` |
+| `--validate` | Validate the input file and exit without generating a deck |
+| `--offline` | Use only cached local media; no TTS or image-search network calls |
+| `--include-known` | Do not skip words already present in the known-words ledger |
+| `--push` | Planned (AnkiConnect push), not implemented yet |
+
+Running with no options keeps the interactive mode: the script asks for the
+CSV file and the card models.
+
 Use `--csv` and `--models` to generate a deck without prompts:
 
 ```bash
@@ -173,6 +188,18 @@ anki-cards-generator --csv cards.example.csv --models all --offline
 Exit codes are stable for scripted usage: `0` means success, `1` means a
 runtime failure such as CSV validation errors or a missing CSV file, and `2`
 means invalid CLI usage.
+
+### Known Words Ledger
+
+Every successful run records its words in `known_words.json` at the project
+root (not tracked by Git). On later runs, words already attributed to a
+*different* source file are skipped, so chapter decks do not repeat vocabulary
+you have already drilled. Re-running the same file regenerates its own words
+as usual. Disable the filter for one run with:
+
+```bash
+anki-cards-generator --csv chapter02.csv --models all --include-known
+```
 
 ### CSV Validation
 
