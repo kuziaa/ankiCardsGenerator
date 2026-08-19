@@ -15,3 +15,4 @@ results/
 
 known_words.json
 image-review/
+.github/workflows/
