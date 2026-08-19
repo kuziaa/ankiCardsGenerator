@@ -147,23 +147,67 @@ def test_store_media_overwrites_when_requested(tmp_path):
 
 
 def test_push_notes_updates_existing_and_adds_missing():
-    model = FakeModel("EN-RU Typing Model")
+    model = FakeModel("EN-RU Vocabulary")
     existing_note = FakeNote(model, ["dojo", "додзё"])
     new_note = FakeNote(model, ["hinges", "петли"])
-    client = FakeClient(results={"findNotes": [[101], []]})
+    client = FakeClient(results={
+        "findNotes": [[101], []],
+        "notesInfo": [{"fields": {"English": {"value": "dojo"},
+                                  "Russian": {"value": "старое"}}}],
+    })
 
     added, updated = push_notes(client, [existing_note, new_note], "Base::deck")
 
     assert (added, updated) == (1, 1)
     actions = [c[0] for c in client.calls]
-    assert actions == ["findNotes", "updateNoteFields", "findNotes", "addNote"]
-    update_params = client.calls[1][1]
+    assert actions == ["findNotes", "notesInfo", "updateNoteFields",
+                       "findNotes", "addNote"]
+    update_params = client.calls[2][1]
     assert update_params["note"]["id"] == 101
     assert update_params["note"]["fields"] == {"English": "dojo", "Russian": "додзё"}
-    add_params = client.calls[3][1]
+    add_params = client.calls[4][1]
     assert add_params["note"]["deckName"] == "Base::deck"
-    assert add_params["note"]["modelName"] == "EN-RU Typing Model"
+    assert add_params["note"]["modelName"] == "EN-RU Vocabulary"
     assert add_params["note"]["fields"]["English"] == "hinges"
+
+
+def test_push_update_never_degrades_stored_fields():
+    model = FakeModel("EN-RU Vocabulary")
+    model.fields = [{"name": "English"}, {"name": "Russian"},
+                    {"name": "RussianIncorrect1"}, {"name": "EnRuChoice"}]
+    # markdown-mode rerun: no distractors, choice gate off
+    incoming = FakeNote(model, ["dojo", "додзё-новое", "", ""])
+    client = FakeClient(results={
+        "findNotes": [[101]],
+        "notesInfo": [{"fields": {"English": {"value": "dojo"},
+                                  "Russian": {"value": "додзё"},
+                                  "RussianIncorrect1": {"value": "храм"},
+                                  "EnRuChoice": {"value": "y"}}}],
+    })
+
+    added, updated = push_notes(client, [incoming], "Base::deck")
+
+    assert (added, updated) == (0, 1)
+    merged = client.calls[2][1]["note"]["fields"]
+    assert merged == {"English": "dojo",
+                      "Russian": "додзё-новое",      # non-empty incoming wins
+                      "RussianIncorrect1": "храм",   # empty incoming keeps stored
+                      "EnRuChoice": "y"}             # gates are never cleared
+
+
+def test_push_add_writes_fields_as_generated():
+    model = FakeModel("EN-RU Vocabulary")
+    model.fields = [{"name": "English"}, {"name": "Russian"},
+                    {"name": "EnRuChoice"}]
+    incoming = FakeNote(model, ["dojo", "додзё", ""])
+    client = FakeClient(results={"findNotes": [[]]})
+
+    added, updated = push_notes(client, [incoming], "Base::deck")
+
+    assert (added, updated) == (1, 0)
+    assert client.calls[1][1]["note"]["fields"] == {"English": "dojo",
+                                                    "Russian": "додзё",
+                                                    "EnRuChoice": ""}
 
 
 def test_fetch_mature_words_collects_first_fields():

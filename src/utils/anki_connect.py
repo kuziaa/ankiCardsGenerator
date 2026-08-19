@@ -101,11 +101,13 @@ def store_media(client, media_paths, overwrite: bool = False) -> tuple:
 
 
 def push_notes(client, notes, deck_name: str) -> tuple:
-    """Add new notes or update fields of existing ones. Returns (added, updated).
+    """Add new notes or merge fields into existing ones. Returns (added, updated).
 
     A note is matched by its first field + note type - the same identity the
     genanki GUID uses, so .apkg imports and pushes agree on what "same card"
-    means. Updating fields keeps the scheduling history intact.
+    means. An update never degrades the stored note: an empty incoming value
+    keeps the stored one, so a partial rerun (fewer models, markdown mode,
+    offline media) cannot clear gates, distractors or media references.
     """
     added = 0
     updated = 0
@@ -116,7 +118,12 @@ def push_notes(client, notes, deck_name: str) -> tuple:
         query = f'"note:{note.model.name}" "{field_names[0]}:{word}"'
         found = client.invoke("findNotes", query=query)
         if found:
-            client.invoke("updateNoteFields", note={"id": found[0], "fields": fields})
+            info = client.invoke("notesInfo", notes=[found[0]]) or []
+            stored = {name: value.get("value", "")
+                      for name, value in (info[0].get("fields", {}) if info else {}).items()}
+            merged = {name: value if value else stored.get(name, "")
+                      for name, value in fields.items()}
+            client.invoke("updateNoteFields", note={"id": found[0], "fields": merged})
             updated += 1
         else:
             client.invoke("addNote", note={
