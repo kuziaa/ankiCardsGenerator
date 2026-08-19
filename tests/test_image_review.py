@@ -1,9 +1,12 @@
+import base64
+import io
 import json
+import re
 
 import pytest
 from PIL import Image
 
-from image_review import load_manifest
+from image_review import TEMPLATE_PATH, load_manifest, render_page
 
 
 def write_candidate(path, size=(600, 400), color=(120, 160, 200)):
@@ -79,3 +82,76 @@ def test_load_manifest_accepts_a_null_pick(tmp_path):
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
     assert load_manifest(path)["words"][0]["pick"] is None
+
+
+def render(tmp_path, **overrides):
+    manifest = load_manifest(build_manifest(tmp_path, **overrides))
+    return render_page(manifest, TEMPLATE_PATH.read_text(encoding="utf-8"))
+
+
+def test_page_renders_a_section_per_word(tmp_path):
+    html = render(tmp_path)
+
+    assert html.count('<section class="word"') == 1
+    assert 'data-word="On the verge of"' in html
+
+
+def test_proposed_pick_is_preselected(tmp_path):
+    html = render(tmp_path)
+
+    assert 'value="c5" checked' in html
+    assert 'value="a1" checked' not in html
+
+
+def test_page_offers_the_two_extra_states(tmp_path):
+    html = render(tmp_path)
+
+    assert 'value="__none__"' in html
+    assert 'value="__more__"' in html
+
+
+def test_previews_are_embedded_and_paths_do_not_leak(tmp_path):
+    html = render(tmp_path)
+
+    assert html.count("data:image/jpeg;base64,") == 2
+    assert "candidates/verge/a1.jpg" not in html
+
+
+def test_previews_are_downscaled(tmp_path):
+    write_candidate(tmp_path / "candidates" / "verge" / "a1.jpg", size=(2000, 1500))
+    html = render(tmp_path)
+
+    encoded = re.search(r'data:image/jpeg;base64,([^"]+)"', html).group(1)
+    with Image.open(io.BytesIO(base64.b64decode(encoded))) as image:
+        assert max(image.size) == 420
+
+
+def test_text_is_escaped(tmp_path):
+    manifest_path = build_manifest(tmp_path)
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    data["words"][0]["example"] = "war & <b>peace</b>"
+    manifest_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    html = render_page(load_manifest(manifest_path),
+                       TEMPLATE_PATH.read_text(encoding="utf-8"))
+
+    assert "war &amp; &lt;b&gt;peace&lt;/b&gt;" in html
+    assert "<b>peace</b>" not in html
+
+
+def test_header_counters_match_the_manifest(tmp_path):
+    manifest_path = build_manifest(tmp_path)
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    data["words"].append({
+        "word": "Marginal", "translation": "Незначительный", "example": "x",
+        "pick": None, "reason": "no usable candidate",
+        "candidates": [{"id": "a1", "file": "candidates/verge/a1.jpg", "query": "marginal"}],
+    })
+    manifest_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    html = render_page(load_manifest(manifest_path),
+                       TEMPLATE_PATH.read_text(encoding="utf-8"))
+
+    assert "2 words" in html
+    assert "1 with a proposed image" in html
+    assert "1 proposed without" in html
