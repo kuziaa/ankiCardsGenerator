@@ -1,15 +1,17 @@
-"""Factory for the mirrored typing/choice card models.
+"""Shared building blocks for the unified vocabulary note type.
 
-The EN-RU and RU-EN variants of each model differ only in model id, direction
-name, prompt/answer fields, distractor field prefix and audio placement -
-everything else used to be copy-paste. Model ids and field lists are frozen:
-changing them breaks note types in existing Anki collections.
+Holds the CSS fragments, the card template sources and the sentinel renderer
+that `vocab_model.py` assembles into the unified model, plus the registry of
+retired note-type ids. `CARD_CSS` is also shared with the cloze model.
 """
 
-import genanki
-
-# v1 note-type ids, retired by the v2 migration - never reuse
-RETIRED_MODEL_IDS = frozenset({73727116, 4392726, 2343456, 23436536, 234556757})
+# v1 and v2 note-type ids, retired by the v2/v3 migrations - never reuse
+RETIRED_MODEL_IDS = frozenset({
+    # v1
+    73727116, 4392726, 2343456, 23436536, 234556757,
+    # v2
+    1298336501, 1354702052, 1427185897, 1495623708, 1563008841,
+})
 
 CARD_CSS = """\
         .card {
@@ -70,9 +72,6 @@ IMAGE_CSS = """\
             margin: 0 auto;
             display: block;
         }"""
-
-TYPING_CSS = "\n" + CARD_CSS + "\n\n" + IMAGE_CSS + "\n    "
-CHOICE_CSS = "\n" + CARD_CSS + "\n\n" + CHOICE_WIDGET_CSS + "\n\n" + IMAGE_CSS + "\n    "
 
 _TYPING_QFMT = """
                 <div class="image-front">
@@ -498,80 +497,3 @@ def _render(template: str, mapping: dict) -> str:
         else:
             out = out.replace(token, value)
     return out
-
-
-def make_typing_model(model_id: int, direction: str, prompt_field: str,
-                      answer_field: str, audio_in_answer: bool,
-                      name_suffix: str = "") -> genanki.Model:
-    """Typing card: prompt on the front, the answer is typed in.
-
-    Audio is always on the front; audio_in_answer controls the back side.
-    """
-    mapping = {
-        "__PROMPT__": prompt_field,
-        "__ANSWER__": answer_field,
-        "__AUDIO_LINE__": "{{Audio}}<br><br><br>" if audio_in_answer else None,
-    }
-    return genanki.Model(
-        model_id,
-        f"{direction} Typing Model{name_suffix}",
-        fields=[
-            {"name": "English"},
-            {"name": "Russian"},
-            {"name": "Example"},
-            {"name": "Audio"},
-            {"name": "Image"},
-            {"name": "ExampleAudio"},
-        ],
-        templates=[
-            {
-                "name": f"{direction} Typing",
-                "qfmt": _render(_TYPING_QFMT, mapping),
-                "afmt": _render(_TYPING_AFMT, mapping),
-            }
-        ],
-        css=TYPING_CSS,
-    )
-
-
-def make_choice_model(model_id: int, direction: str, prompt_field: str,
-                      answer_field: str, incorrect_prefix: str,
-                      audio_on_front: bool, name_suffix: str = "") -> genanki.Model:
-    """Multiple-choice card with shuffled answer buttons.
-
-    audio_on_front=False keeps the pronunciation off the question side (it
-    would give the answer away) and plays it after the answer field instead.
-    """
-    mapping = {
-        "__PROMPT__": prompt_field,
-        "__ANSWER__": answer_field,
-        "__INC__": incorrect_prefix,
-        "__SCRIPT__": _CHOICE_SCRIPT,
-        "__AUDIO_FRONT__": "{{Audio}}<br>" if audio_on_front else None,
-        "__AUDIO_AFTER_HEADING__": "{{Audio}}<br>" if audio_on_front else None,
-        "__AUDIO_AFTER_HR__": None if audio_on_front else "{{Audio}}<br>",
-    }
-    return genanki.Model(
-        model_id,
-        f"{direction} Choice Model{name_suffix}",
-        fields=[
-            {"name": "English"},
-            {"name": "Russian"},
-            {"name": "Example"},
-            {"name": "Audio"},
-            {"name": f"{incorrect_prefix}1"},
-            {"name": f"{incorrect_prefix}2"},
-            {"name": f"{incorrect_prefix}3"},
-            {"name": f"{incorrect_prefix}4"},
-            {"name": "Image"},
-            {"name": "ExampleAudio"},
-        ],
-        templates=[
-            {
-                "name": f"{direction} Choice",
-                "qfmt": _render(_CHOICE_QFMT, mapping),
-                "afmt": _render(_CHOICE_AFMT, mapping),
-            }
-        ],
-        css=CHOICE_CSS,
-    )

@@ -109,6 +109,17 @@ def test_scramble_styles_are_scoped_and_template_carries_the_class():
     assert ".choice-btn" in vocab_model.model.css
 
 
+def test_retired_ids_cover_v1_and_v2_and_are_not_reused():
+    assert RETIRED_MODEL_IDS == {
+        # v1
+        73727116, 4392726, 2343456, 23436536, 234556757,
+        # v2
+        1298336501, 1354702052, 1427185897, 1495623708, 1563008841,
+    }
+    assert vocab_model.MODEL_ID not in RETIRED_MODEL_IDS
+    assert 1631442296 not in RETIRED_MODEL_IDS  # cloze stays current
+
+
 def test_service_fields_carry_editor_hints():
     by_name = {field["name"]: field for field in vocab_model.model.fields}
     for name in DISTRACTOR_FIELDS + GATE_FIELDS:
