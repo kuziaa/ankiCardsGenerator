@@ -247,7 +247,9 @@ anki-cards-generator --csv chapter02.csv --models all --push
 - Media files are uploaded; files already present in the collection are kept
   unless `--overwrite-media` is passed.
 - Existing notes (matched by the word and note type) are updated **in place**,
-  keeping their scheduling history; new words are added.
+  keeping their scheduling history; new words are added. Updates merge: an
+  empty incoming field never overwrites a stored value, so gates, distractors
+  and media survive partial reruns (markdown mode, `--offline`, fewer models).
 - An AnkiWeb sync is triggered at the end, so your phone gets the cards.
 - If Anki is not running, the run fails with a clear message - rerun without
   `--push` to get an `.apkg` file instead.
@@ -371,12 +373,19 @@ The project supports creating up to 5 different types of flashcards per word:
 - **Use case**: Recalling the word in its real context; a collapsible Russian hint helps without giving the answer away
 - **Format**: Cloze deletion (`{{c1::word}}`); skipped with a warning when the word does not occur verbatim in its example
 
-### Note types v2
+### Note types v3: one note per word
 
-Since the v2 migration all decks are built on " v2" note types (new ids, an
-extra `ExampleAudio` field) plus the cloze type. Old decks keep working on the
-v1 types; delete an old deck before regenerating its chapter, otherwise the
-new import creates parallel notes.
+Since the v3 migration a word is a single `EN-RU Vocabulary` note carrying
+all five card templates (typing, choice, scramble), plus a separate cloze
+note. Which cards exist is controlled per word by gate fields that mirror the
+`--models` selection, so Anki treats the word's cards as siblings: an edit
+fixes every card at once, and the deck options can bury siblings of a
+reviewed card. The v2/v1 note types are retired; their mature cards still
+feed the known-words ledger until the old decks are deleted.
+
+Migrating an existing collection: run the generator once with Anki open (the
+mature words land in the ledger), then delete the old decks and note types
+manually. Scheduling history is not carried over by design.
 
 ## Multiple Deck Support
 
@@ -428,12 +437,10 @@ ankiCardsGenerator/
 │   └── prompt_vocabulary_extraction.txt
 ├── src/
 │   ├── anki_generator.py         # Main script with CSV and model selection
-│   ├── models/                   # Card models (Anki templates)
-│   │   ├── en_ru_typing_model.py
-│   │   ├── ru_en_typing_model.py
-│   │   ├── en_ru_choice_model.py
-│   │   ├── ru_en_choice_model.py
-│   │   └── ru_en_scramble_model.py (includes error counter)
+│   ├── models/                   # Note types (Anki templates)
+│   │   ├── vocab_model.py        # Unified note type: 5 gated card templates
+│   │   ├── en_ru_cloze_model.py  # Separate cloze note type
+│   │   └── factory.py            # Template sources, CSS, retired ids
 │   ├── utils/                    # Utility modules
 │   │   ├── logger.py             # Logging
 │   │   ├── properties_util.py    # Configuration loading
@@ -514,20 +521,23 @@ Each card contains:
 
 ### Adding a New Card Type
 
-1. Create a new model file in `src/models/your_model.py`
-2. Define the structure in genanki.Model
-3. Add import and instantiation in `card_generator.py`
-4. Add creation logic in `CardGenerator.create_cards()` method
-5. Update `anki_generator.py` to include new model number in `select_card_models()`
+1. Add a gate field and a gated template to `src/models/vocab_model.py`
+   (append the field — never reorder the existing 19)
+2. Map a new model number to the gate in `CardGenerator` and set it in
+   `create_cards()`
+3. Update `anki_generator.py` to include the new number in
+   `select_card_models()`
+
+Adding a template to the existing note type makes the new card appear for
+every already-imported word. Note: in an existing Anki collection the note
+type must be updated too (Anki only auto-creates missing note types).
 
 ### Changing Card Design
 
-Edit the corresponding files in `src/models/`:
-- Modify HTML templates in `qfmt` (front side) and `afmt` (back side)
-- Update CSS in the `css` block
-- Edit the field list in `fields`
-
-Example: To add a new visual element to the Scramble card, edit `ru_en_scramble_model.py`
+Edit the template sources in `src/models/factory.py` (typing/choice/scramble
+qfmt, afmt and CSS fragments) or the cloze templates in
+`en_ru_cloze_model.py`; `vocab_model.py` assembles the sources into the
+unified note type. Never change the field lists of existing models.
 
 ## Troubleshooting
 
