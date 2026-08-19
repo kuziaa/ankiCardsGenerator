@@ -41,3 +41,14 @@ def unmatched_files(index: dict, words) -> list:
     """Inbox file names that no word in the source file claims."""
     claimed = {normalize_name(word) for word in words}
     return sorted(path.name for key, path in index.items() if key not in claimed)
+
+
+def format_image_summary(manual: int, auto: int, missing_words: list) -> str:
+    """One-line provenance report for the end of a run."""
+    line = f"Images: {manual} manual, {auto} auto, {len(missing_words)} missing"
+    if not missing_words:
+        return line
+    preview = ', '.join(missing_words[:20])
+    if len(missing_words) > 20:
+        preview += f" and {len(missing_words) - 20} more"
+    return f"{line} ({preview})"

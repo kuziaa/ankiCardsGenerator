@@ -1,6 +1,7 @@
 from PIL import Image
 
-from utils.image_inbox import index_inbox, normalize_name, unmatched_files
+from utils.image_inbox import (format_image_summary, index_inbox,
+                               normalize_name, unmatched_files)
 
 
 def write_image(path, size=(40, 30), color=(120, 160, 200)):
@@ -46,3 +47,19 @@ def test_unmatched_files_reports_names_no_word_claims(tmp_path):
     index = index_inbox(tmp_path)
 
     assert unmatched_files(index, ["Parochial", "On the verge of"]) == ["verge.jpg"]
+
+
+def test_format_image_summary_without_missing_words():
+    assert format_image_summary(7, 18, []) == "Images: 7 manual, 18 auto, 0 missing"
+
+
+def test_format_image_summary_lists_missing_words():
+    line = format_image_summary(1, 2, ["Marginal", "Parochial"])
+
+    assert line == "Images: 1 manual, 2 auto, 2 missing (Marginal, Parochial)"
+
+
+def test_format_image_summary_caps_the_preview():
+    words = [f"word{i}" for i in range(23)]
+
+    assert format_image_summary(0, 0, words).endswith("word19 and 3 more)")

@@ -23,6 +23,7 @@ from utils.properties_util import load_properties
 from utils.media_manager import MediaManager
 from utils.card_generator import CardGenerator, CardData, create_deck_from_cards
 from utils.csv_validator import validate_csv, validate_word_entries
+from utils.image_inbox import format_image_summary, unmatched_files
 from utils.known_words import (filter_known_words, load_known_words,
                                record_known_words, record_word_list)
 from utils.anki_connect import (AnkiConnectClient, AnkiConnectError,
@@ -584,6 +585,9 @@ def main(options: CliOptions = None):
         logger.error("✗ No flashcards to process. Exiting.")
         return False
     
+    # Inbox warnings compare against every word of the source, not the filtered rest
+    all_source_words = [card.english for card in cards_data]
+
     # Known-words ledger: skip vocabulary already generated from other sources
     ledger_path = root_path / 'known_words.json'
     if not options.include_known:
@@ -612,6 +616,7 @@ def main(options: CliOptions = None):
     
     all_notes = []
     media_files = []
+    words_without_image = []
     
     logger.info(f"Processing {len(cards_data)} words...")
     
@@ -645,6 +650,8 @@ def main(options: CliOptions = None):
             )
             if image_path:
                 media_files.append(image_path)
+            else:
+                words_without_image.append(card_data.english)
             
             # Create flashcards
             notes = card_generator.create_cards(
@@ -723,6 +730,12 @@ def main(options: CliOptions = None):
     logger.info("=" * 60)
     logger.info("✓ Process completed successfully!")
     logger.info(f"  Total flashcards created: {len(all_notes)}")
+    logger.info("  " + format_image_summary(media_manager.manual_count,
+                                            media_manager.auto_count,
+                                            words_without_image))
+    unmatched = unmatched_files(media_manager.inbox_index, all_source_words)
+    if unmatched:
+        logger.warning(f"Unmatched files in inbox: {', '.join(unmatched[:20])}")
     if options.push:
         logger.info(f"  Pushed to Anki deck: {deck_name}")
     else:
