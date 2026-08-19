@@ -76,6 +76,10 @@ def _word_html(index: int, entry: dict) -> str:
         _candidate_html(name, candidate, candidate["id"] == pick)
         for candidate in entry.get("candidates", [])
     )
+    if not candidates:
+        # Deliberately unsearched words must read as a decision, not a glitch
+        reason = entry.get("reason") or "no candidates collected"
+        candidates = f'<p class="empty">No candidates - {html.escape(reason)}</p>'
     none_checked = " checked" if pick is None else ""
     return (
         f'<section class="word" data-word="{html.escape(entry["word"], quote=True)}">'

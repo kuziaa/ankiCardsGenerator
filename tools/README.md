@@ -43,6 +43,10 @@ python tools/image_review.py path/to/manifest.json --out /tmp/review.html
   no image at all.
 - Validation fails loudly on a missing file, an unknown `pick` or duplicate
   candidate ids - a broken manifest never renders a half-empty page.
+- `candidates` may be empty with `pick: null` for a word that should not be
+  searched at all (explicit slang, clinical terms). The page then shows the
+  `reason` where the thumbnails would be, so the row reads as a decision
+  rather than a glitch.
 
 ### The page
 

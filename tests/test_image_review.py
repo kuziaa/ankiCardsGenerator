@@ -119,6 +119,24 @@ def test_candidates_sit_in_one_strip_beside_the_extra_states(tmp_path):
     assert html.index('<div class="specials">') > html.index('<div class="strip">')
 
 
+def test_word_without_candidates_explains_itself(tmp_path):
+    manifest_path = build_manifest(tmp_path)
+    data = json.loads(manifest_path.read_text(encoding="utf-8"))
+    data["words"].append({
+        "word": "Necrosis", "translation": "Некроз", "example": "keep the necrosis under control",
+        "pick": None, "reason": "Clinical imagery only - not searched on purpose",
+        "candidates": [],
+    })
+    manifest_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+    html = render_page(load_manifest(manifest_path),
+                       TEMPLATE_PATH.read_text(encoding="utf-8"))
+
+    assert 'class="empty"' in html
+    assert "Clinical imagery only - not searched on purpose" in html
+    assert html.count('value="__none__" checked') == 1
+
+
 def test_page_carries_a_copyable_fallback(tmp_path):
     html = render(tmp_path)
 

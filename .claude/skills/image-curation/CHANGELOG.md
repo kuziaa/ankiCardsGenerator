@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.2] - 2026-08-19
+
+### Added
+
+- Guidance on words whose image search should not be run at face value
+  (explicit slang, clinical and surgical terms), and how to send them to the
+  page as a justified no-image proposal.
+
 ## [1.0.1] - 2026-08-19
 
 ### Changed

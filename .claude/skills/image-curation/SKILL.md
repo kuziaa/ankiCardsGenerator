@@ -63,6 +63,29 @@ When a word has no plausible picture at all, propose **no image**. An
 irrelevant picture is worse than none: it competes with the meaning during
 recall. Saying so honestly is a valid, expected outcome.
 
+### Words not to search blind
+
+Real vocabulary lists contain words whose image search should not be run at
+face value:
+
+- **Explicit or vulgar slang** - an image search on the literal phrase
+  returns pornography or nothing usable. Do not run it.
+- **Clinical and surgical terms** (wound debridement, tissue necrosis,
+  amputation) - the honest results are graphic medical photographs. They are
+  not what someone wants on a flashcard they will see hundreds of times.
+- **Anything where a plausible query would return disturbing results.** If
+  you can predict that before searching, that prediction is the answer.
+
+For these, send the word to the page with an empty candidate list, `pick`
+set to `null`, and the `reason` stating why nothing was collected - for
+example "explicit slang, not searched on purpose" or "clinical imagery
+only". The page renders that reason in place of the thumbnails, so the owner
+sees a decision with its justification instead of an empty row, and can
+still override it with *Need more options* if they disagree.
+
+This is a judgement call you make before spending a search, not a filter you
+apply to results.
+
 Keep the full-size originals - the page shows downscaled previews, but the
 originals are what eventually reach the deck.
 
@@ -90,7 +113,9 @@ originals are what eventually reach the deck.
 - `word` must match the source word list **byte for byte** - it becomes the
   image file name later, and a near-miss means the deck silently keeps the
   old picture.
-- `pick` may be `null` when you propose no image.
+- `pick` may be `null` when you propose no image, and `candidates` may be an
+  empty list when the word should not be searched at all - the `reason` then
+  carries the explanation shown on the page.
 - `file` paths are relative to the manifest.
 - `reason` is one line explaining *why this picture means this word*, not what
   is depicted. The owner reads it to decide whether to trust the pick.
