@@ -11,6 +11,7 @@ from urllib3.util.retry import Retry
 from gtts import gTTS
 from PIL import Image
 
+from utils.image_inbox import index_inbox, normalize_name
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -21,6 +22,7 @@ socket.setdefaulttimeout(30)
 AUDIO_MIN_BYTES = 1024
 MP3_MAGIC_PREFIXES = (b"ID3", b"\xff")
 IMAGE_MIN_BYTES = 5000
+MANUAL_IMAGE_MAX_SIDE = 800
 TTS_ATTEMPTS = 3
 TTS_THROTTLE_SECONDS = 0.4
 REQUEST_TIMEOUT = (5, 20)
@@ -41,7 +43,7 @@ class MediaManager:
     """Class for managing media file downloads and generation (audio, images)."""
 
     def __init__(self, media_dir: str = "media", api_key: str = "", cx: str = "",
-                 offline: bool = False):
+                 offline: bool = False, inbox_dir: str = ""):
         """
         Initialize the media manager.
 
@@ -50,6 +52,7 @@ class MediaManager:
             api_key: Google Custom Search API key
             cx: Google Custom Search CX parameter
             offline: Use only validated cached media files and skip network calls
+            inbox_dir: Directory with manually curated images for this source file
         """
         self.media_dir = Path(media_dir)
         self.api_key = api_key
@@ -57,6 +60,9 @@ class MediaManager:
         self.offline = offline
         self.has_api_keys = bool(api_key and cx)
         self.search_disabled = False
+        self.inbox_index = index_inbox(inbox_dir) if inbox_dir else {}
+        self.manual_count = 0
+        self.auto_count = 0
         self.session = self._make_session()
 
         # Create media directory if it doesn't exist
@@ -131,6 +137,27 @@ class MediaManager:
         logger.error(f"✗ Error generating audio for '{text}': all attempts failed")
         return None
 
+    def _manual_image(self, search_term: str, image_path: Path) -> bool:
+        """Copy a curated inbox file into the deck media, converted and capped."""
+        source = self.inbox_index.get(normalize_name(search_term))
+        if source is None:
+            return False
+
+        try:
+            with Image.open(source) as image:
+                image.load()
+                converted = image.convert("RGB")
+                converted.thumbnail((MANUAL_IMAGE_MAX_SIDE, MANUAL_IMAGE_MAX_SIDE))
+                buffer = io.BytesIO()
+                converted.save(buffer, "JPEG", quality=85)
+        except Exception as e:
+            logger.error(f"✗ Broken image in inbox ({source.name}): {e}")
+            return False
+
+        _atomic_write(image_path, buffer.getvalue())
+        logger.info(f"✓ Image taken from inbox: {source.name}")
+        return True
+
     def download_image(self, search_term: str, safe_filename: str, max_attempts: int = 5) -> str:
         """
         Download image via Google Custom Search.
@@ -145,10 +172,16 @@ class MediaManager:
         """
         image_path = self.media_dir / f"{safe_filename}.jpg"
 
+        # A curated file wins over the cache and the search
+        if self._manual_image(search_term, image_path):
+            self.manual_count += 1
+            return str(image_path)
+
         # Reuse the cached file only when it passes validation
         if image_path.exists():
             if self._valid_cached_image(image_path):
                 logger.debug(f"Image already exists: {image_path}")
+                self.auto_count += 1
                 return str(image_path)
             logger.warning(f"Cached image is corrupt, removing: {image_path}")
             image_path.unlink()
@@ -229,6 +262,7 @@ class MediaManager:
                 image.save(buffer, 'JPEG', quality=85)
                 _atomic_write(image_path, buffer.getvalue())
                 logger.info(f"✓ Image successfully downloaded: {search_term}")
+                self.auto_count += 1
                 return str(image_path)
 
             except Exception as e:

@@ -23,6 +23,7 @@ from utils.properties_util import load_properties
 from utils.media_manager import MediaManager
 from utils.card_generator import CardGenerator, CardData, create_deck_from_cards
 from utils.csv_validator import validate_csv, validate_word_entries
+from utils.image_inbox import format_image_summary, unmatched_files
 from utils.known_words import (filter_known_words, load_known_words,
                                record_known_words, record_word_list)
 from utils.anki_connect import (AnkiConnectClient, AnkiConnectError,
@@ -54,6 +55,7 @@ class CliOptions:
     include_known: bool = False
     push: bool = False
     overwrite_media: bool = False
+    images_root: str = None
 
 
 def project_root() -> Path:
@@ -114,6 +116,11 @@ def build_parser() -> argparse.ArgumentParser:
         action='store_true',
         help="With --push: overwrite media files that already exist in the Anki collection.",
     )
+    parser.add_argument(
+        '--images-root',
+        metavar='DIR',
+        help="Root folder of the manual image inbox; the source file name is appended.",
+    )
     return parser
 
 
@@ -169,7 +176,8 @@ def parse_args(argv: list = None) -> CliOptions:
 
     options = CliOptions(validate_only=args.validate, offline=args.offline,
                          include_known=args.include_known, push=args.push,
-                         overwrite_media=args.overwrite_media)
+                         overwrite_media=args.overwrite_media,
+                         images_root=args.images_root)
     if args.from_md:
         try:
             options.markdown_path = resolve_existing_path(args.from_md)
@@ -402,6 +410,16 @@ def example_audio_enabled(properties: dict) -> bool:
     return properties.get('EXAMPLE_AUDIO', 'true').strip().lower() != 'false'
 
 
+def resolve_images_root(images_root_arg, properties: dict, root_path: Path) -> Path:
+    """Inbox root: CLI flag wins, then the config key, then the project folder."""
+    if images_root_arg:
+        return Path(images_root_arg).expanduser()
+    configured = properties.get('IMAGES_ROOT', '').strip()
+    if configured:
+        return Path(configured).expanduser()
+    return root_path / 'images'
+
+
 def derive_deck_id(source_stem: str) -> int:
     """Stable per-source deck ID so different inputs never merge on import."""
     return (zlib.crc32(source_stem.encode('utf-8')) % (1 << 30)) + (1 << 30)
@@ -536,6 +554,14 @@ def main(options: CliOptions = None):
     # Create media subdirectory for this input file
     media_dir = media_root_dir / source_name_no_ext
     media_dir.mkdir(parents=True, exist_ok=True)
+
+    # Inbox for manually curated images
+    inbox_dir = resolve_images_root(options.images_root, properties, root_path) / source_name_no_ext
+    try:
+        inbox_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Manual image inbox: {inbox_dir}")
+    except OSError as e:
+        logger.warning(f"Manual image inbox unavailable ({inbox_dir}): {e}")
     
     # Create results directory for output APKG files
     results_dir = root_path / 'results'
@@ -559,6 +585,9 @@ def main(options: CliOptions = None):
         logger.error("✗ No flashcards to process. Exiting.")
         return False
     
+    # Inbox warnings compare against every word of the source, not the filtered rest
+    all_source_words = [card.english for card in cards_data]
+
     # Known-words ledger: skip vocabulary already generated from other sources
     ledger_path = root_path / 'known_words.json'
     if not options.include_known:
@@ -581,11 +610,13 @@ def main(options: CliOptions = None):
         api_key=api_key,
         cx=cx,
         offline=options.offline,
+        inbox_dir=str(inbox_dir),
     )
     card_generator = CardGenerator(selected_models=selected_models)
     
     all_notes = []
     media_files = []
+    words_without_image = []
     
     logger.info(f"Processing {len(cards_data)} words...")
     
@@ -619,6 +650,8 @@ def main(options: CliOptions = None):
             )
             if image_path:
                 media_files.append(image_path)
+            else:
+                words_without_image.append(card_data.english)
             
             # Create flashcards
             notes = card_generator.create_cards(
@@ -697,6 +730,12 @@ def main(options: CliOptions = None):
     logger.info("=" * 60)
     logger.info("✓ Process completed successfully!")
     logger.info(f"  Total flashcards created: {len(all_notes)}")
+    logger.info("  " + format_image_summary(media_manager.manual_count,
+                                            media_manager.auto_count,
+                                            words_without_image))
+    unmatched = unmatched_files(media_manager.inbox_index, all_source_words)
+    if unmatched:
+        logger.warning(f"Unmatched files in inbox: {', '.join(unmatched[:20])}")
     if options.push:
         logger.info(f"  Pushed to Anki deck: {deck_name}")
     else:

@@ -13,3 +13,6 @@ EXAMPLE_AUDIO=TRUE
 
 # AnkiConnect endpoint for --push and the learned-words sync (optional)
 #ANKICONNECT_URL=http://127.0.0.1:8765
+
+# Root folder for manually curated images; the source file name is appended (optional)
+#IMAGES_ROOT=C:\path\to\vault\_deck-images
