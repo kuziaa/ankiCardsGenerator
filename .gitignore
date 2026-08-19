@@ -14,3 +14,4 @@ results/
 .venv/
 
 known_words.json
+image-review/
