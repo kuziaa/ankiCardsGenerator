@@ -81,6 +81,10 @@ stays separate.
   atomically; a corrupt cached file is deleted and re-fetched, never shipped.
 - `config.properties` is optional: without Google API keys images are
   skipped; audio needs no keys (gTTS).
+- Image resolution order is fixed: the manual inbox (`<images root>/<source
+  stem>/<word>.*`) beats the `media/` cache, which beats the search. A curated
+  file must always win, otherwise the cache silently defeats the feature.
+  Inbox files are read-only for the generator.
 - Anki integration (`utils/anki_connect.py`) is best-effort by design: the
   learned-words sync silently skips when Anki is closed, while `--push` fails
   loudly with a hint to rerun without the flag. Push matches notes by first

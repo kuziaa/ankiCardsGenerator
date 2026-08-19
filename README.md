@@ -135,13 +135,14 @@ All options at a glance (run `anki-cards-generator --help` for the same list):
 | Option | Description |
 |--------|-------------|
 | `--csv PATH` | CSV input file; bare file names are also searched in `src/resources/` |
-| `--from-md PATH` | Obsidian markdown note as input (models 1, 2, 5 only); mutually exclusive with `--csv` |
+| `--from-md PATH` | Obsidian markdown note as input (models 1, 2, 5, 6 only); mutually exclusive with `--csv` |
 | `--models LIST` | Card models to generate: `all` or comma-separated numbers, e.g. `1,2,5` |
 | `--validate` | Validate the input file and exit without generating a deck |
 | `--offline` | Use only cached local media; no TTS or image-search network calls |
 | `--include-known` | Do not skip words already present in the known-words ledger |
 | `--push` | Push cards into a running Anki via AnkiConnect instead of writing an `.apkg` file |
 | `--overwrite-media` | With `--push`: overwrite media files that already exist in the Anki collection |
+| `--images-root DIR` | Root folder of the manual image inbox; the source file name is appended |
 
 Running with no options keeps the interactive mode: the script asks for the
 CSV file and the card models.
@@ -207,6 +208,30 @@ with a single log line. Disable the filter for one run with:
 ```bash
 anki-cards-generator --csv chapter02.csv --models all --include-known
 ```
+
+### Manual Images
+
+The automatic image search works well for concrete nouns and badly for
+abstract ones. Any image dropped into the inbox wins over the search:
+
+```
+<images root>/<source file name>/<english word>.jpg
+```
+
+- The root comes from `--images-root`, else `IMAGES_ROOT` in
+  `config.properties`, else `<project>/images`. The folder is created on every
+  run and its path is printed in the log.
+- File names are matched loosely: case, spaces, hyphens and underscores are
+  interchangeable, so `On the verge of.jpg`, `on-the-verge-of.png` and
+  `ON_THE_VERGE_OF.webp` all match the word `On the verge of`.
+- Supported: `.jpg`, `.jpeg`, `.png`, `.webp`. Files are copied into the deck
+  as JPEG capped at 800 px on the longest side; the originals are never
+  touched.
+- A curated file also beats a previously downloaded image, so replacing a bad
+  picture is a matter of dropping a file and rerunning.
+- With a fully curated inbox a deck builds with `--offline` and no API keys.
+- The run ends with `Images: N manual, M auto, K missing` and warns about
+  inbox files that match no word - usually a typo in a file name.
 
 ### Push to Anki (AnkiConnect)
 
