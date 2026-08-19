@@ -28,12 +28,13 @@ chosen by the owner, by an assistant, or downloaded automatically.
   `--images-manual` mode: real chapters are mixed — most words search fine,
   a few need a hand-picked image, and a binary flag cannot express that.
 - **Inbox lives in the Obsidian vault**, grouped per book:
-  `<IMAGES_DIR>/<source stem>/<word>.<ext>`, e.g.
+  `<images root>/<source stem>/<word>.<ext>`, e.g.
   `1-Projects/Reading Leviathan Wakes/_deck-images/holden/on the verge of.jpg`.
 - The vault copies **are committed** to the shared vault repository, so the
   curation survives a reinstall and syncs between devices.
-- `IMAGES_DIR` is configured in `config.properties`, which is git-ignored in
-  this repository — the personal vault path never reaches GitHub.
+- The inbox root is configured in `config.properties`, which is git-ignored
+  in this repository — the personal vault path never reaches GitHub — and can
+  be overridden per run with `--images-root`.
 
 ## Resolution order
 
@@ -53,8 +54,8 @@ no API keys at all.
 ## Name matching
 
 The inbox is indexed once per run: every `.jpg`, `.jpeg`, `.png` and `.webp`
-file in `<IMAGES_DIR>/<stem>/` is mapped by a normalized form of its base
-name. Normalization: NFKD, strip combining marks, casefold, replace every run
+file in the effective inbox directory is mapped by a normalized form of its
+base name. Normalization: NFKD, strip combining marks, casefold, replace every run
 of non-alphanumeric characters with a single space, trim. The same
 normalization is applied to the English word.
 
@@ -98,12 +99,20 @@ Silent conventions rot, so the run states what it did:
 `config.properties` gains one optional key:
 
 ```
-IMAGES_DIR=C:\path\to\vault\1-Projects\Reading Leviathan Wakes\_deck-images
+IMAGES_ROOT=C:\...\vault\Reading Leviathan Wakes\_deck-images
 ```
 
-Unset → `<project root>/images`. The per-run inbox is always
-`<IMAGES_DIR>/<source stem>/`, so chapters never collide and the folder name
-is decoupled from Obsidian's own folder naming.
+The root is resolved in this order:
+
+1. `--images-root <path>` —a one-off override, for a run against a folder
+   that is not the usual vault location;
+2. `IMAGES_ROOT` in `config.properties` —the steady-state setting;
+3. `<project root>/images` —the fallback when neither is given.
+
+Both the flag and the key name a **root**, never a per-chapter folder: the
+effective inbox is always `<root>/<source stem>/`. Giving the two spellings
+the same meaning keeps chapters from colliding and keeps the folder name
+decoupled from Obsidian's own folder naming.
 
 ## Testing
 
@@ -116,7 +125,8 @@ TDD throughout. Cases:
 - a corrupt manual file logs an error and falls through;
 - downscaling: a 2000 px source becomes ≤ 800 px, a 400 px source is untouched;
 - the unmatched-files warning is computed from the unfiltered word list;
-- `IMAGES_DIR` unset falls back to `<project root>/images`.
+- root resolution: `--images-root` beats `IMAGES_ROOT`, which beats
+  `<project root>/images`, and the source stem is appended in every case.
 
 Plus an end-to-end offline run on the example CSV with a prepared inbox,
 asserting that the packaged deck carries the manual image.
