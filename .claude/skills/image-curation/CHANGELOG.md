@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.1] - 2026-08-19
+
+### Changed
+
+- Keep the working folder in the repository: browsers refuse File System
+  Access writes into temp locations, so the owner could not save next to the
+  page.
+- Show four or five candidates per word instead of up to eight, so one row
+  is enough to compare them.
+- The page now falls back to a copyable dialog instead of a silent download.
+
 ## [1.0.0] - 2026-08-19
 
 ### Added

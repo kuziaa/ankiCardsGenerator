@@ -58,8 +58,14 @@ python tools/image_review.py path/to/manifest.json --out /tmp/review.html
 ### Output: `choices.json`
 
 Saving uses the browser's file picker where available (Chromium-based
-browsers), suggesting `choices.json` next to the page; elsewhere it falls
-back to a normal download.
+browsers), suggesting `choices.json` next to the page; when the browser
+refuses to write, the page shows the same JSON in a dialog to copy or
+download.
+
+Keep the whole round in `image-review/<source>/` inside the repository
+(git-ignored). Browsers block File System Access writes into system
+locations such as `AppData\Local\Temp`, so a page generated there cannot
+save the choices beside itself.
 
 ```json
 {

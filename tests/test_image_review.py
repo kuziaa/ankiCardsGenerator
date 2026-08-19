@@ -110,6 +110,23 @@ def test_page_offers_the_two_extra_states(tmp_path):
     assert 'value="__more__"' in html
 
 
+def test_candidates_sit_in_one_strip_beside_the_extra_states(tmp_path):
+    html = render(tmp_path)
+
+    strip = html.split('<div class="strip">')[1].split("</div>")[0]
+    assert strip.count('class="cand"') == 2
+    assert "__none__" not in strip
+    assert html.index('<div class="specials">') > html.index('<div class="strip">')
+
+
+def test_page_carries_a_copyable_fallback(tmp_path):
+    html = render(tmp_path)
+
+    assert '<dialog id="fallback">' in html
+    assert 'id="payload"' in html
+    assert 'id="download"' in html
+
+
 def test_previews_are_embedded_and_paths_do_not_leak(tmp_path):
     html = render(tmp_path)
 

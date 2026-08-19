@@ -29,10 +29,28 @@ land in the inbox the deck generator already reads.
 Do not compress this: skipping step 3 and asking about words in chat costs a
 round trip per word, which is exactly the friction this loop removes.
 
+## Where the working folder goes
+
+Build everything for one round in `image-review/<source>/` inside the
+repository (git-ignored), not in a temp directory: browsers refuse File
+System Access writes into system locations such as `AppData\Local\Temp`, so
+the owner would be unable to save their choices back next to the page.
+
+```
+image-review/<source>/
+├── candidates/<word-key>/<id>.jpg
+├── manifest.json
+└── review.html
+```
+
 ## Step 1 - collect candidates
 
-Aim for four to eight candidates per word, from more than one query. Two
-kinds of words need two different approaches:
+Show **four or five** candidates per word - enough to compare at a glance in
+a single row, few enough that the owner is not scrolling through near
+duplicates. Search more widely than that, then keep the best five; the point
+of the page is a quick decision, not an exhaustive gallery.
+
+Two kinds of words need two different approaches:
 
 - **Concrete nouns** (`schematics`, `prosthetic`) - the word itself is a fine
   query. Do not over-think these; the plain search usually wins.
@@ -94,10 +112,12 @@ unusable; with it you get a precise instruction to search again.
 
 ## Step 4 - wait
 
-The page saves `choices.json` through the browser's file picker, or falls
-back to a normal download. Look for it next to the page first, then in the
-downloads folder. Do not guess at the owner's intent while waiting - the
-whole point is that this decision is theirs.
+The page saves `choices.json` through the browser's file picker; when the
+browser refuses, it shows the same JSON in a dialog to copy or download. Look
+for the file next to the page first, then in the downloads folder, and ask
+where it landed rather than searching the disk blindly. Do not guess at the
+owner's intent while waiting - the whole point is that this decision is
+theirs.
 
 ```json
 {

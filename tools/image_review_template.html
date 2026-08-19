@@ -23,16 +23,24 @@
   .ru { margin: 0 0 8px; color: #2a7ae2; font-weight: 600; }
   .ex { margin: 0 0 8px; font-style: italic; color: #444; line-height: 1.45; }
   .why { margin: 0; line-height: 1.45; }
-  .candidates { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
-  .cand { display: block; cursor: pointer; padding: 4px; border: 3px solid transparent;
+  .candidates { display: flex; gap: 12px; align-items: flex-start; }
+  .strip { display: flex; flex: 1; gap: 12px; overflow-x: auto; padding-bottom: 6px; }
+  .specials { display: flex; flex: 0 0 auto; flex-direction: column; gap: 8px; }
+  .cand { flex: 0 0 auto; cursor: pointer; padding: 4px; border: 3px solid transparent;
           border-radius: 10px; }
-  .cand img { display: block; width: 210px; height: 150px; object-fit: contain;
+  .cand img { display: block; width: 190px; height: 140px; object-fit: contain;
               background: #fafafa; border-radius: 6px; }
-  .cand .tag { display: block; max-width: 210px; margin-top: 4px; font-size: 11px; color: #77777e; }
-  .special { display: flex; align-items: center; gap: 6px; align-self: flex-start;
+  .cand .tag { display: block; max-width: 190px; margin-top: 4px; font-size: 11px; color: #77777e; }
+  .special { display: flex; align-items: center; gap: 6px; white-space: nowrap;
              padding: 12px 14px; border: 1px dashed #b9b9c0; border-radius: 10px;
              font-size: 14px; cursor: pointer; }
   .selected { border-color: #2f9e44; background: #f2fbf4; }
+  dialog { max-width: 640px; border: 0; border-radius: 12px; padding: 20px; }
+  dialog p { margin: 0 0 12px; line-height: 1.45; }
+  dialog textarea { width: 100%; box-sizing: border-box; font-family: ui-monospace, Consolas, monospace;
+                    font-size: 12px; }
+  dialog .actions { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+  dialog a { font-size: 14px; }
   @media (max-width: 900px) { section.word { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -47,6 +55,17 @@
 <main>
 $ROWS
 </main>
+<dialog id="fallback">
+  <p>The browser would not let the page write the file directly. Copy the text
+     below and hand it over, or try the download link.</p>
+  <textarea id="payload" rows="14" readonly></textarea>
+  <div class="actions">
+    <button id="copy">Copy to clipboard</button>
+    <a id="download" download="choices.json">Download choices.json</a>
+    <span class="spacer"></span>
+    <button id="close">Close</button>
+  </div>
+</dialog>
 <script>
 const SOURCE = $SOURCE_JSON;
 
@@ -72,6 +91,16 @@ function collect() {
   return { source: SOURCE, choices: choices };
 }
 
+function showFallback(text) {
+  const payload = document.getElementById('payload');
+  payload.value = text;
+  document.getElementById('download').href =
+    URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  document.getElementById('fallback').showModal();
+  payload.focus();
+  payload.select();
+}
+
 async function save() {
   const text = JSON.stringify(collect(), null, 2);
   const status = document.getElementById('status');
@@ -87,16 +116,28 @@ async function save() {
       if (error.name === 'AbortError') { return; }
     }
   }
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-  link.download = 'choices.json';
-  link.click();
-  URL.revokeObjectURL(link.href);
-  status.textContent = 'Downloaded';
+  // Local pages cannot always write or download; the text itself always works
+  status.textContent = 'Direct write unavailable';
+  showFallback(text);
+}
+
+function copyPayload() {
+  const payload = document.getElementById('payload');
+  payload.select();
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(payload.value).catch(() => document.execCommand('copy'));
+  } else {
+    document.execCommand('copy');
+  }
+  document.getElementById('status').textContent = 'Copied';
 }
 
 document.addEventListener('change', paint);
 document.getElementById('save').addEventListener('click', save);
+document.getElementById('copy').addEventListener('click', copyPayload);
+document.getElementById('close').addEventListener('click', () => {
+  document.getElementById('fallback').close();
+});
 paint();
 </script>
 </body>

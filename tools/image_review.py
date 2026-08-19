@@ -83,12 +83,13 @@ def _word_html(index: int, entry: dict) -> str:
         f'<p class="ru">{html.escape(entry.get("translation", ""))}</p>'
         f'<p class="ex">{html.escape(entry.get("example", ""))}</p>'
         f'<p class="why">{html.escape(entry.get("reason", ""))}</p></div>'
-        f'<div class="candidates">{candidates}'
+        f'<div class="candidates"><div class="strip">{candidates}</div>'
+        f'<div class="specials">'
         f'<label class="special"><input type="radio" name="{name}" '
         f'value="__none__"{none_checked}>No image</label>'
         f'<label class="special"><input type="radio" name="{name}" '
         f'value="__more__">Need more options</label>'
-        f'</div></section>'
+        f'</div></div></section>'
     )
 
 
