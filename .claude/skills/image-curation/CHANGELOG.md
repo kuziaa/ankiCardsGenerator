@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.3] - 2026-08-19
+
+### Added
+
+- What to do when the keyed image search hits its daily quota: switch to
+  keyless sources (Openverse, Wikimedia Commons) and finish the round rather
+  than delivering a thinner page.
+
 ## [1.0.2] - 2026-08-19
 
 ### Added

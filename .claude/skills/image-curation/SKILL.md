@@ -86,6 +86,31 @@ still override it with *Need more options* if they disagree.
 This is a judgement call you make before spending a search, not a filter you
 apply to results.
 
+### When the search quota runs out
+
+Keyed image search is metered. Google Custom Search, the usual backend here,
+allows about a hundred queries per day for free, and one round costs roughly
+a query per word plus every re-query for words that needed a second angle -
+so a chapter re-run or two exhausts a day's budget. The API answers `403` or
+`429` once it is spent.
+
+Do not stop, and do not quietly hand over a page with fewer candidates.
+Switch to keyless sources and finish the round:
+
+- **Openverse** (`api.openverse.org`) - aggregates openly licensed photos;
+  good general coverage, weaker on staged conceptual scenes.
+- **Wikimedia Commons** (`commons.wikimedia.org/w/api.php`) - encyclopedic
+  and reliable for concrete nouns, objects, places and diagrams.
+
+Two things to keep in mind when switching. Coverage differs, so a query that
+worked against one backend may return nothing against another - rephrase
+rather than concluding the word has no image. And a network can be
+restricted in ways that make a source look broken: check that the host is
+actually reachable before deciding it is unusable.
+
+Tell the owner which source the candidates came from when it is not the
+usual one. Licences differ between backends, and they may care.
+
 Keep the full-size originals - the page shows downscaled previews, but the
 originals are what eventually reach the deck.
 
