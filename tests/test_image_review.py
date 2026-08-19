@@ -6,7 +6,7 @@ import re
 import pytest
 from PIL import Image
 
-from image_review import TEMPLATE_PATH, load_manifest, render_page
+from image_review import TEMPLATE_PATH, load_manifest, main, render_page
 
 
 def write_candidate(path, size=(600, 400), color=(120, 160, 200)):
@@ -155,3 +155,21 @@ def test_header_counters_match_the_manifest(tmp_path):
     assert "2 words" in html
     assert "1 with a proposed image" in html
     assert "1 proposed without" in html
+
+
+def test_main_writes_the_page_next_to_the_manifest(tmp_path):
+    manifest_path = build_manifest(tmp_path)
+
+    assert main([str(manifest_path)]) == 0
+
+    page = tmp_path / "review.html"
+    assert page.exists()
+    assert "Image review" in page.read_text(encoding="utf-8")
+
+
+def test_main_reports_a_bad_manifest_without_a_traceback(tmp_path, capsys):
+    manifest_path = build_manifest(tmp_path)
+    (tmp_path / "candidates" / "verge" / "c5.jpg").unlink()
+
+    assert main([str(manifest_path)]) == 1
+    assert "candidate file not found" in capsys.readouterr().err

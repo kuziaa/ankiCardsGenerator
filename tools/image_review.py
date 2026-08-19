@@ -1,9 +1,11 @@
 """Build a local review page from a manifest of image candidates."""
 
+import argparse
 import base64
 import html
 import io
 import json
+import sys
 from pathlib import Path
 from string import Template
 
@@ -103,3 +105,29 @@ def render_page(manifest: dict, template_text: str) -> str:
         COUNTERS=html.escape(counters),
         ROWS=rows,
     )
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Build a local image review page from a candidates manifest.")
+    parser.add_argument("manifest", help="Path to manifest.json")
+    parser.add_argument("--out",
+                        help="Output HTML path (default: review.html next to the manifest)")
+    args = parser.parse_args(argv)
+
+    manifest_path = Path(args.manifest)
+    try:
+        manifest = load_manifest(manifest_path)
+    except (ValueError, OSError, json.JSONDecodeError) as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 1
+
+    page = render_page(manifest, TEMPLATE_PATH.read_text(encoding="utf-8"))
+    out_path = Path(args.out) if args.out else manifest_path.parent / "review.html"
+    out_path.write_text(page, encoding="utf-8")
+    print(f"page written: {out_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
