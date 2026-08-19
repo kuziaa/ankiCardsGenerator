@@ -33,5 +33,5 @@ include = ["models*", "utils*"]
 namespaces = true
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
+pythonpath = ["src", "tools"]
 testpaths = ["tests"]
