@@ -3,7 +3,8 @@ from pathlib import Path
 import pytest
 
 from anki_generator import (cli, example_audio_enabled, parse_args,
-                            parse_model_selection, resolve_csv_path)
+                            parse_model_selection, resolve_csv_path,
+                            resolve_images_root)
 from utils.card_generator import CardGenerator
 
 
@@ -159,6 +160,28 @@ def test_from_md_allows_cloze_explicitly(tmp_path):
     options = parse_args(["--from-md", str(write_md_fixture(tmp_path)), "--models", "6"])
 
     assert options.selected_models == [6]
+
+
+def test_images_root_flag_is_parsed():
+    options = parse_args(["--images-root", "D:/pics"])
+
+    assert options.images_root == "D:/pics"
+
+
+def test_resolve_images_root_prefers_the_flag(tmp_path):
+    root = resolve_images_root("D:/from-flag", {"IMAGES_ROOT": "D:/from-config"}, tmp_path)
+
+    assert root == Path("D:/from-flag")
+
+
+def test_resolve_images_root_falls_back_to_config(tmp_path):
+    root = resolve_images_root(None, {"IMAGES_ROOT": "D:/from-config"}, tmp_path)
+
+    assert root == Path("D:/from-config")
+
+
+def test_resolve_images_root_defaults_to_project_images(tmp_path):
+    assert resolve_images_root(None, {}, tmp_path) == tmp_path / "images"
 
 
 def test_from_md_still_rejects_choice_models(tmp_path):

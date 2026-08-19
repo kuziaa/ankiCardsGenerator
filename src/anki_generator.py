@@ -54,6 +54,7 @@ class CliOptions:
     include_known: bool = False
     push: bool = False
     overwrite_media: bool = False
+    images_root: str = None
 
 
 def project_root() -> Path:
@@ -114,6 +115,11 @@ def build_parser() -> argparse.ArgumentParser:
         action='store_true',
         help="With --push: overwrite media files that already exist in the Anki collection.",
     )
+    parser.add_argument(
+        '--images-root',
+        metavar='DIR',
+        help="Root folder of the manual image inbox; the source file name is appended.",
+    )
     return parser
 
 
@@ -169,7 +175,8 @@ def parse_args(argv: list = None) -> CliOptions:
 
     options = CliOptions(validate_only=args.validate, offline=args.offline,
                          include_known=args.include_known, push=args.push,
-                         overwrite_media=args.overwrite_media)
+                         overwrite_media=args.overwrite_media,
+                         images_root=args.images_root)
     if args.from_md:
         try:
             options.markdown_path = resolve_existing_path(args.from_md)
@@ -402,6 +409,16 @@ def example_audio_enabled(properties: dict) -> bool:
     return properties.get('EXAMPLE_AUDIO', 'true').strip().lower() != 'false'
 
 
+def resolve_images_root(images_root_arg, properties: dict, root_path: Path) -> Path:
+    """Inbox root: CLI flag wins, then the config key, then the project folder."""
+    if images_root_arg:
+        return Path(images_root_arg).expanduser()
+    configured = properties.get('IMAGES_ROOT', '').strip()
+    if configured:
+        return Path(configured).expanduser()
+    return root_path / 'images'
+
+
 def derive_deck_id(source_stem: str) -> int:
     """Stable per-source deck ID so different inputs never merge on import."""
     return (zlib.crc32(source_stem.encode('utf-8')) % (1 << 30)) + (1 << 30)
@@ -536,6 +553,14 @@ def main(options: CliOptions = None):
     # Create media subdirectory for this input file
     media_dir = media_root_dir / source_name_no_ext
     media_dir.mkdir(parents=True, exist_ok=True)
+
+    # Inbox for manually curated images
+    inbox_dir = resolve_images_root(options.images_root, properties, root_path) / source_name_no_ext
+    try:
+        inbox_dir.mkdir(parents=True, exist_ok=True)
+        logger.info(f"Manual image inbox: {inbox_dir}")
+    except OSError as e:
+        logger.warning(f"Manual image inbox unavailable ({inbox_dir}): {e}")
     
     # Create results directory for output APKG files
     results_dir = root_path / 'results'
@@ -581,6 +606,7 @@ def main(options: CliOptions = None):
         api_key=api_key,
         cx=cx,
         offline=options.offline,
+        inbox_dir=str(inbox_dir),
     )
     card_generator = CardGenerator(selected_models=selected_models)
     
