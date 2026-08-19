@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.0] - 2026-08-19
+
+### Added
+
+- Reusable write-back `tools/apply_choices.py`: copies the confirmed originals
+  from a round's `choices.json` into `<images root>/<source>/`, with a
+  `--dry-run` that doubles as the "show what will be written" approval step.
+  Step 5 now runs this tool instead of copying files by hand.
+
+## [1.1.0] - 2026-08-19
+
+### Added
+
+- Reusable collector `tools/collect_candidates.py`: turns a curator-authored
+  spec (per-word queries or a `no_image` decision) into the review manifest,
+  downloading and validating candidates and falling back from Google to
+  Openverse then Wikimedia automatically. Step 2 now runs this tool instead of
+  hand-fetching images and hand-writing the manifest each round.
+
 ## [1.0.3] - 2026-08-19
 
 ### Added
