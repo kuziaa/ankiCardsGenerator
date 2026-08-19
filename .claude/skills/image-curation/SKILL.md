@@ -38,8 +38,9 @@ the owner would be unable to save their choices back next to the page.
 
 ```
 image-review/<source>/
+├── spec.json                       # your queries / no-image decisions
 ├── candidates/<word-key>/<id>.jpg
-├── manifest.json
+├── manifest.json                   # written by collect_candidates.py
 └── review.html
 ```
 
@@ -95,7 +96,8 @@ so a chapter re-run or two exhausts a day's budget. The API answers `403` or
 `429` once it is spent.
 
 Do not stop, and do not quietly hand over a page with fewer candidates.
-Switch to keyless sources and finish the round:
+The collector (Step 2) already falls back to keyless sources automatically
+once Google answers `403`/`429`; these are what it switches to:
 
 - **Openverse** (`api.openverse.org`) - aggregates openly licensed photos;
   good general coverage, weaker on staged conceptual scenes.
@@ -114,7 +116,26 @@ usual one. Licences differ between backends, and they may care.
 Keep the full-size originals - the page shows downscaled previews, but the
 originals are what eventually reach the deck.
 
-## Step 2 - write the manifest
+## Step 2 - author the spec and collect
+
+You make the judgement calls; a tool does the fetching. Write a **spec** -
+one entry per word carrying the query (or queries) you designed, or
+`no_image: true` for a word you decided not to search - then let the collector
+query the backends, validate the downloads, dedupe and assemble the manifest:
+
+```bash
+python .claude/skills/image-curation/tools/collect_candidates.py <spec.json> [--per-word 5] [--providers google,openverse,wikimedia]
+```
+
+A spec entry is `word` (byte-for-byte the source word), optional `translation`,
+`example` and `reason`, and either `queries: [...]` or `no_image: true`. The
+collector writes `manifest.json` and downloads the originals into
+`candidates/<word-key>/`; it tries Google first (keys from `config.properties`)
+and falls back to Openverse then Wikimedia on quota, so you never hand over a
+thinner page. Run it with `--help` for all flags. Do not hand-fetch images or
+hand-write the manifest - that is exactly the repeat work this tool removes.
+
+The manifest it produces is the contract the review page reads:
 
 ```json
 {
@@ -138,17 +159,18 @@ originals are what eventually reach the deck.
 - `word` must match the source word list **byte for byte** - it becomes the
   image file name later, and a near-miss means the deck silently keeps the
   old picture.
-- `pick` may be `null` when you propose no image, and `candidates` may be an
-  empty list when the word should not be searched at all - the `reason` then
-  carries the explanation shown on the page.
+- `pick` defaults to the first candidate; it is `null` when you proposed no
+  image, and `candidates` is empty when the word was not searched at all - the
+  `reason` then carries the explanation shown on the page.
 - `file` paths are relative to the manifest.
 - `reason` is one line explaining *why this picture means this word*, not what
-  is depicted. The owner reads it to decide whether to trust the pick.
+  is depicted. Set it in the spec; refine any pick or reason directly in the
+  manifest before generating the page.
 
 ## Step 3 - generate the page
 
 ```bash
-python tools/image_review.py <manifest.json>
+python .claude/skills/image-curation/tools/image_review.py <manifest.json>
 ```
 
 This writes a self-contained `review.html` next to the manifest. Tell the
@@ -182,18 +204,27 @@ theirs.
 
 ## Step 5 - write back and clean up
 
-For each entry:
+`apply_choices.py` reads the manifest and `choices.json` and copies the
+confirmed **originals** into the inbox for you:
 
-- `keep` - copy the **original** candidate file (never the preview embedded
-  in the page) to `<images root>/<source>/<word>.jpg`. That folder is the
+```bash
+python .claude/skills/image-curation/tools/apply_choices.py <manifest.json> <choices.json> --dry-run   # show the plan
+python .claude/skills/image-curation/tools/apply_choices.py <manifest.json> <choices.json>             # copy them
+```
+
+It resolves the inbox as `<images root>/<source>/` (`IMAGES_ROOT` from
+`config.properties`, or the project `images/` folder), names each file
+`<word><ext>`, and handles the three actions:
+
+- `keep` - copies the original candidate (never the page preview) into the
   inbox the deck generator prefers over its own search.
-- `none` - write nothing. The word deliberately has no picture.
-- `more` - start a fresh search round with *different* queries. Repeating the
-  same queries wastes a cycle; the owner already saw those results and
-  rejected them.
+- `none` - writes nothing. The word deliberately has no picture.
+- `more` - left for you to run a fresh search round with *different* queries
+  (repeating the rejected ones wastes a cycle), then apply that round's
+  choices too.
 
-Writing into the owner's notes or vault needs their approval first - show
-what will be written where, then wait.
+Writing into the owner's vault needs their approval first: run `--dry-run`,
+show what will be written where, then wait.
 
 Finally delete the temporary candidates folder, the manifest, the page and
 `choices.json`. What survives is exactly the confirmed images.

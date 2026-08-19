@@ -33,5 +33,5 @@ include = ["models*", "utils*"]
 namespaces = true
 
 [tool.pytest.ini_options]
-pythonpath = ["src", "tools"]
+pythonpath = ["src", ".claude/skills/image-curation/tools"]
 testpaths = ["tests"]
