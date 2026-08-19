@@ -1,6 +1,6 @@
 # Unified Note Type (v3) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Replace the five per-direction note types with one unified `EN-RU Vocabulary` note type (5 templates, gate fields), so a word is one note instead of six.
 
@@ -42,7 +42,7 @@ The unified field order (frozen forever):
 | 10–13 | `EnglishIncorrect1..4` |
 | 14–18 | `EnRuTyping`, `RuEnTyping`, `EnRuChoice`, `RuEnChoice`, `Scramble` |
 
-- [ ] **Step 1: Move the scramble template into `factory.py` as constants**
+- [x] **Step 1: Move the scramble template into `factory.py` as constants**
 
 Append to `src/models/factory.py` (after `_CHOICE_AFMT`, before `def _render`):
 
@@ -142,7 +142,7 @@ Note: the v2 scramble file has a Russian comment (`/* Контейнер для 
 
 Do NOT touch `src/models/ru_en_scramble_model.py` in this task — it keeps working from its own inline copy until Task 3 deletes it.
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `tests/test_vocab_model.py`:
 
@@ -267,12 +267,12 @@ def test_service_fields_carry_editor_hints():
         assert "collapsed" not in by_name[name]
 ```
 
-- [ ] **Step 3: Run tests to verify they fail**
+- [x] **Step 3: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_vocab_model.py -q`
 Expected: FAIL at import time — `cannot import name 'vocab_model' from 'models'`.
 
-- [ ] **Step 4: Implement `src/models/vocab_model.py`**
+- [x] **Step 4: Implement `src/models/vocab_model.py`**
 
 ```python
 """The unified vocabulary note type (v3): one note per word, five templates.
@@ -378,12 +378,12 @@ model = genanki.Model(
 
 The per-template audio mappings above reproduce v2 exactly: EN-RU Typing repeats audio on the back, RU-EN Typing does not; EN-RU Choice plays audio on the front and after the heading, RU-EN Choice only after the `<hr>` divider.
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `python -m pytest tests/test_vocab_model.py -q`
 Expected: all PASS. Also run `python -m pytest -q` — the v2 suite must still pass untouched.
 
-- [ ] **Step 6: Commit (after owner review)**
+- [x] **Step 6: Commit (after owner review)**
 
 ```bash
 git add src/models/factory.py src/models/vocab_model.py tests/test_vocab_model.py
@@ -402,7 +402,7 @@ git commit -m "feat: add the unified vocabulary note type (v3) with gate fields"
 - Consumes: `vocab_model.model`, `vocab_model.GATE_ON`, `vocab_model.GATE_FIELDS` (Task 1).
 - Produces: `CardGenerator.create_cards(...) -> List[genanki.Note]` returning 1–2 notes (unified + optional cloze); `ALL_MODELS == [vocab_model.model, en_ru_cloze_model.model]`; `model_names_for_sync()` covering unified + cloze + all legacy names. `src/anki_generator.py` needs **no changes** — it consumes `create_cards` and note `.model` attributes generically.
 
-- [ ] **Step 1: Update the tests**
+- [x] **Step 1: Update the tests**
 
 In `tests/test_card_generator.py`, replace the tests listed below; keep `make_card_data`, the `safe_media_name`/`derive_deck_id`/`build_cloze_text` tests and the cloze tests (`test_cloze_note_structure`, `test_cloze_note_skipped_when_word_not_in_example`, `test_cloze_note_carries_no_example_audio`) unchanged.
 
@@ -507,12 +507,12 @@ def test_sync_names_cover_unified_cloze_and_legacy():
     assert "RU-EN Scramble Model" in names
 ```
 
-- [ ] **Step 2: Run tests to verify the new ones fail**
+- [x] **Step 2: Run tests to verify the new ones fail**
 
 Run: `python -m pytest tests/test_card_generator.py -q`
 Expected: the replaced/added tests FAIL (create_cards still returns per-model notes); the kept cloze/util tests PASS.
 
-- [ ] **Step 3: Rewrite `create_cards` and the module constants**
+- [x] **Step 3: Rewrite `create_cards` and the module constants**
 
 In `src/utils/card_generator.py`:
 
@@ -613,12 +613,12 @@ Replace the whole body of `create_cards` (keep the signature and docstring shape
 
 Note the cloze block previously referenced `self.model_en_cloze` — it now uses `en_ru_cloze_model.model` directly.
 
-- [ ] **Step 4: Run the full suite**
+- [x] **Step 4: Run the full suite**
 
 Run: `python -m pytest -q`
 Expected: everything passes, including `tests/test_models_factory.py` (v2 models still exist) and `tests/test_cli.py` / `tests/test_md_loader.py` (untouched surfaces).
 
-- [ ] **Step 5: Commit (after owner review)**
+- [x] **Step 5: Commit (after owner review)**
 
 ```bash
 git add src/utils/card_generator.py tests/test_card_generator.py
@@ -639,7 +639,7 @@ git commit -m "feat: generate one unified note per word instead of five"
 - Consumes: nothing new.
 - Produces: `RETIRED_MODEL_IDS` covering v1 + v2 ids. Nothing may import the five deleted modules or `make_typing_model`/`make_choice_model`/`TYPING_CSS`/`CHOICE_CSS` afterwards.
 
-- [ ] **Step 1: Update the retired-ids guard**
+- [x] **Step 1: Update the retired-ids guard**
 
 In `tests/test_vocab_model.py`, leave the existing tests unchanged and add:
 
@@ -655,12 +655,12 @@ def test_retired_ids_cover_v1_and_v2_and_are_not_reused():
     assert 1631442296 not in RETIRED_MODEL_IDS  # cloze stays current
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `python -m pytest tests/test_vocab_model.py::test_retired_ids_cover_v1_and_v2_and_are_not_reused -q`
 Expected: FAIL — the set still holds only the five v1 ids.
 
-- [ ] **Step 3: Retire ids, delete dead code**
+- [x] **Step 3: Retire ids, delete dead code**
 
 In `src/models/factory.py`:
 
@@ -692,12 +692,12 @@ grep -rn "en_ru_typing_model\|ru_en_typing_model\|en_ru_choice_model\|ru_en_choi
 
 Expected matches: none (`CHOICE_WIDGET_CSS` does not match the `CHOICE_CSS` pattern and stays).
 
-- [ ] **Step 4: Run the full suite**
+- [x] **Step 4: Run the full suite**
 
 Run: `python -m pytest -q`
 Expected: all PASS.
 
-- [ ] **Step 5: Commit (after owner review)**
+- [x] **Step 5: Commit (after owner review)**
 
 ```bash
 git add -A src/models tests
@@ -716,7 +716,7 @@ git commit -m "feat: retire the five v2 note types in favor of the unified model
 - Consumes: existing `client.invoke` contract; new AnkiConnect action used: `notesInfo` (returns `[{"fields": {name: {"value": ...}, ...}, ...}]`).
 - Produces: `push_notes(client, notes, deck_name) -> (added, updated)` — same signature, merge semantics on update.
 
-- [ ] **Step 1: Update the existing push test and add merge tests**
+- [x] **Step 1: Update the existing push test and add merge tests**
 
 In `tests/test_anki_connect.py`, replace `test_push_notes_updates_existing_and_adds_missing`:
 
@@ -790,12 +790,12 @@ def test_push_add_writes_fields_as_generated():
 
 Note on `FakeClient`: its list-of-lists convention pops sequential responses for `findNotes`; the `notesInfo` result above is a plain list of dicts, which `FakeClient` returns whole on every call — exactly what these tests need.
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_anki_connect.py -q`
 Expected: the three tests above FAIL (no `notesInfo` call, no merge).
 
-- [ ] **Step 3: Implement the merge**
+- [x] **Step 3: Implement the merge**
 
 Replace `push_notes` in `src/utils/anki_connect.py`:
 
@@ -836,12 +836,12 @@ def push_notes(client, notes, deck_name: str) -> tuple:
     return added, updated
 ```
 
-- [ ] **Step 4: Run the full suite**
+- [x] **Step 4: Run the full suite**
 
 Run: `python -m pytest -q`
 Expected: all PASS.
 
-- [ ] **Step 5: Commit (after owner review)**
+- [x] **Step 5: Commit (after owner review)**
 
 ```bash
 git add src/utils/anki_connect.py tests/test_anki_connect.py
@@ -858,7 +858,7 @@ git commit -m "feat: push updates merge fields and never degrade a stored note"
 
 **Interfaces:** none — docs only.
 
-- [ ] **Step 1: Update `.claude/CLAUDE.md`**
+- [x] **Step 1: Update `.claude/CLAUDE.md`**
 
 Replace the **Model IDs and field lists** bullet under "Frozen invariants" with:
 
@@ -890,11 +890,11 @@ Append to the push bullet in "Non-obvious design decisions" (after "preserving s
   the initial-import path, push is the update path.
 ```
 
-- [ ] **Step 2: Update `README.md`**
+- [x] **Step 2: Update `README.md`**
 
 Find the note-types / v2 migration section (search for `Old decks keep working on the` around line 377) and rework it to describe v3: one `EN-RU Vocabulary` note type with five card templates gated per word, plus the separate cloze note type; the v2/v1 note types are retired but their mature cards still feed the known-words ledger until the owner deletes the old decks. Also state the migration step order for existing collections: run the generator once with Anki open (so mature words land in the ledger), then delete the old decks and note types manually. Keep the "6 card types" feature list as is — the six card *types* still exist, they just live on two note types now.
 
-- [ ] **Step 3: Verify docs**
+- [x] **Step 3: Verify docs**
 
 Run: `python -m pytest -q` (nothing should break) and re-read both diffs for stray Russian text or stale v2 references:
 
@@ -905,7 +905,7 @@ grep -n "Model v2\|make_typing_model\|make_choice_model" .claude/CLAUDE.md READM
 
 Expected grep hits: only intentional mentions of retired v2 names in the migration note (if any).
 
-- [ ] **Step 4: Commit (after owner review)**
+- [x] **Step 4: Commit (after owner review)**
 
 ```bash
 git add .claude/CLAUDE.md README.md
@@ -918,12 +918,12 @@ git commit -m "docs: describe the unified note type and the v3 migration"
 
 **Files:** none created (throwaway artifacts under `results/` and a scratch script).
 
-- [ ] **Step 1: Full test suite**
+- [x] **Step 1: Full test suite**
 
 Run: `python -m pytest -q`
 Expected: all tests pass.
 
-- [ ] **Step 2: Build a real package offline**
+- [x] **Step 2: Build a real package offline**
 
 ```bash
 cd src && python anki_generator.py --csv cards.example.csv --models all --offline
@@ -931,7 +931,7 @@ cd src && python anki_generator.py --csv cards.example.csv --models all --offlin
 
 Expected: exit code 0, `results/cards.example.apkg` written.
 
-- [ ] **Step 3: Inspect the package**
+- [x] **Step 3: Inspect the package**
 
 Run this snippet (adjust the word count to `cards.example.csv`, which has N data rows):
 
@@ -950,10 +950,10 @@ with tempfile.TemporaryDirectory() as tmp:
 
 Expected for N words that all contain their word in the example: `notes == 2*N` (unified + cloze) and `cards == 6*N` (5 gated + 1 cloze). Words whose example lacks the exact word produce one note less (cloze skipped) — cross-check against the run's warnings.
 
-- [ ] **Step 4: Owner's manual check (hand over, do not automate)**
+- [x] **Step 4: Owner's manual check (hand over, do not automate)**
 
 Ask the owner to: import `results/cards.example.apkg` into Anki (or run with `--push` against a live Anki), confirm a word shows five cards visually identical to v2, no gate values visible on any card, the Browse editor lists the 19 fields with distractors/gates collapsed (or note that the `collapsed` flag did not survive — the documented fallback is a one-time manual "Collapse by default" setup), and the Scramble and Choice cards keep their v2 input-field styling.
 
-- [ ] **Step 5: Report results**
+- [x] **Step 5: Report results**
 
 Report pytest, package-inspection numbers and any deviations to the owner. No commit in this task.
