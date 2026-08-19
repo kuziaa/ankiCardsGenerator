@@ -3,30 +3,25 @@ import hashlib
 import re
 import unicodedata
 from typing import List, Tuple
-from models import en_ru_typing_model
-from models import ru_en_typing_model
-from models import en_ru_choice_model
-from models import ru_en_choice_model
-from models import ru_en_scramble_model
 from models import en_ru_cloze_model
+from models import vocab_model
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
 ALL_MODELS = [
-    en_ru_typing_model.model,
-    ru_en_typing_model.model,
-    en_ru_choice_model.model,
-    ru_en_choice_model.model,
-    ru_en_scramble_model.model,
+    vocab_model.model,
     en_ru_cloze_model.model,
 ]
 
-# Note-type names retired by the v2 migration; mature cards may still live on them
+# Note-type names retired by the v2/v3 migrations; mature cards may still live on them
 LEGACY_MODEL_NAMES = [
     "EN-RU Typing Model", "RU-EN Typing Model",
     "EN-RU Choice Model", "RU-EN Choice Model",
     "EN-RU Scramble Model", "RU-EN Scramble Model",
+    "EN-RU Typing Model v2", "RU-EN Typing Model v2",
+    "EN-RU Choice Model v2", "RU-EN Choice Model v2",
+    "RU-EN Scramble Model v2",
 ]
 
 
@@ -99,21 +94,18 @@ class CardGenerator:
         RU_EN_SCRAMBLE: "RU→EN Scramble",
         EN_CLOZE: "EN-RU Cloze",
     }
-    
+
+    # Model numbers that live as gates on the unified note, in gate-field order
+    VOCAB_MODEL_NUMBERS = (EN_RU_TYPING, RU_EN_TYPING, EN_RU_CHOICE,
+                           RU_EN_CHOICE, RU_EN_SCRAMBLE)
+
     def __init__(self, selected_models: list = None):
         """
         Initialize card generator with models.
-        
+
         Args:
-            selected_models: List of model numbers to use (1-5). If None, all models are used.
+            selected_models: List of model numbers to use (1-6). If None, all models are used.
         """
-        self.model_en_ru_typing = en_ru_typing_model.model
-        self.model_ru_en_typing = ru_en_typing_model.model
-        self.model_en_ru_choice = en_ru_choice_model.model
-        self.model_ru_en_choice = ru_en_choice_model.model
-        self.model_ru_en_scramble = ru_en_scramble_model.model
-        self.model_en_cloze = en_ru_cloze_model.model
-        
         # Use all models if not specified
         if selected_models is None:
             self.selected_models = [self.EN_RU_TYPING, self.RU_EN_TYPING, 
@@ -126,75 +118,41 @@ class CardGenerator:
                     image_path: str = None,
                     example_audio_path: str = None) -> List[genanki.Note]:
         """
-        Create a set of flashcards for one word based on selected models.
-        
+        Create the word's notes: one unified note (5 gated card templates)
+        plus an optional cloze note.
+
         Args:
             card_data: Object with flashcard data
             audio_path: Path to audio file (can be None)
             image_path: Path to image (can be None)
-            
+
         Returns:
             List of created notes (Note objects)
         """
         notes = []
-        
+
         # Prepare audio and image
         audio_field = f"[sound:{card_data.safe_filename}.mp3]" if audio_path else ""
         image_field = f'<img src="{card_data.safe_filename}.jpg">' if image_path else ""
         example_audio_field = (f"[sound:{card_data.safe_filename}_example.mp3]"
                                if example_audio_path else "")
-        
+
         try:
-            # EN → RU typing card
-            if self.EN_RU_TYPING in self.selected_models:
+            # Unified note: data fields always filled, gates mirror the selection
+            if any(m in self.VOCAB_MODEL_NUMBERS for m in self.selected_models):
+                incorrect_ru = (card_data.incorrect_ru + [""] * 4)[:4]
+                incorrect_en = (card_data.incorrect_en + [""] * 4)[:4]
+                gates = [vocab_model.GATE_ON if m in self.selected_models else ""
+                         for m in self.VOCAB_MODEL_NUMBERS]
                 notes.append(
                     VocabNote(
-                        model=self.model_en_ru_typing,
+                        model=vocab_model.model,
                         fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field, image_field, example_audio_field],
+                                audio_field, image_field, example_audio_field,
+                                *incorrect_ru, *incorrect_en, *gates],
                     )
                 )
-            
-            # RU → EN typing card
-            if self.RU_EN_TYPING in self.selected_models:
-                notes.append(
-                    VocabNote(
-                        model=self.model_ru_en_typing,
-                        fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field, image_field, example_audio_field],
-                    )
-                )
-            
-            # EN → RU choice card
-            if self.EN_RU_CHOICE in self.selected_models:
-                notes.append(
-                    VocabNote(
-                        model=self.model_en_ru_choice,
-                        fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field] + card_data.incorrect_ru + [image_field, example_audio_field],
-                    )
-                )
-            
-            # RU → EN choice card
-            if self.RU_EN_CHOICE in self.selected_models:
-                notes.append(
-                    VocabNote(
-                        model=self.model_ru_en_choice,
-                        fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field] + card_data.incorrect_en + [image_field, example_audio_field],
-                    )
-                )
-            
-            # RU → EN scramble card
-            if self.RU_EN_SCRAMBLE in self.selected_models:
-                notes.append(
-                    VocabNote(
-                        model=self.model_ru_en_scramble,
-                        fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field, image_field, example_audio_field],
-                    )
-                )
-            
+
             # EN cloze card: the example with the word hidden
             if self.EN_CLOZE in self.selected_models:
                 cloze_text = build_cloze_text(card_data.english, card_data.example)
@@ -204,12 +162,12 @@ class CardGenerator:
                 else:
                     notes.append(
                         VocabNote(
-                            model=self.model_en_cloze,
+                            model=en_ru_cloze_model.model,
                             fields=[card_data.english, cloze_text, card_data.russian],
                         )
                     )
-            
-            logger.debug(f"Successfully created {len(notes)} flashcards for word: {card_data.english}")
+
+            logger.debug(f"Successfully created {len(notes)} note(s) for word: {card_data.english}")
             return notes
             
         except Exception as e:

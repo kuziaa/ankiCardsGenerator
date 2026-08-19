@@ -22,24 +22,66 @@ def test_derive_deck_id_is_stable_per_csv_name():
     assert derive_deck_id("cards.example") != derive_deck_id("another.deck")
 
 
-def test_create_cards_respects_selected_models_and_unique_guids():
-    generator = CardGenerator(selected_models=[CardGenerator.EN_RU_TYPING, CardGenerator.RU_EN_SCRAMBLE])
+def test_create_cards_returns_one_unified_note_with_gated_cards():
+    generator = CardGenerator(selected_models=[CardGenerator.EN_RU_TYPING,
+                                               CardGenerator.RU_EN_SCRAMBLE])
 
-    notes = generator.create_cards(make_card_data(), audio_path="dojo.mp3", image_path="dojo.jpg")
+    notes = generator.create_cards(make_card_data(), audio_path="dojo.mp3",
+                                   image_path="dojo.jpg")
 
-    assert len(notes) == 2
-    assert len({note.guid for note in notes}) == 2
-    assert all("[sound:dojo_5e09bf57.mp3]" in note.fields for note in notes)
-    assert all('<img src="dojo_5e09bf57.jpg">' in note.fields for note in notes)
+    assert len(notes) == 1
+    note = notes[0]
+    assert note.model.model_id == 1712849305
+    assert sorted(card.ord for card in note.cards) == [0, 4]
+    assert note.fields[3] == "[sound:dojo_5e09bf57.mp3]"
+    assert note.fields[4] == '<img src="dojo_5e09bf57.jpg">'
+    assert note.fields[14:19] == ["y", "", "", "", "y"]
 
 
-def test_choice_card_uses_russian_distractors_for_en_ru_choice():
+def test_unified_note_carries_both_distractor_sets():
     generator = CardGenerator(selected_models=[CardGenerator.EN_RU_CHOICE])
 
     notes = generator.create_cards(make_card_data())
 
     assert len(notes) == 1
-    assert notes[0].fields[4:8] == ["зал ожидания", "игровая площадка", "спальная комната", "офис"]
+    assert notes[0].fields[6:10] == ["зал ожидания", "игровая площадка",
+                                     "спальная комната", "офис"]
+    assert notes[0].fields[10:14] == ["mojo", "doge", "dose", "doze"]
+    assert sorted(card.ord for card in notes[0].cards) == [2]
+
+
+def test_distractors_fill_even_when_choice_models_are_unselected():
+    notes = CardGenerator(selected_models=[CardGenerator.EN_RU_TYPING]).create_cards(make_card_data())
+
+    assert notes[0].fields[6:10] == ["зал ожидания", "игровая площадка",
+                                     "спальная комната", "офис"]
+    assert notes[0].fields[14:19] == ["y", "", "", "", ""]
+
+
+def test_missing_distractors_pad_to_empty_strings():
+    card = CardData("dojo", "додзё", "She trained in the dojo.", [], [])
+
+    notes = CardGenerator(selected_models=[CardGenerator.RU_EN_TYPING]).create_cards(card)
+
+    assert notes[0].fields[6:14] == [""] * 8
+
+
+def test_all_models_produce_unified_plus_cloze_notes():
+    generator = CardGenerator()
+
+    notes = generator.create_cards(make_card_data())
+
+    assert len(notes) == 2
+    assert notes[0].model.model_id == 1712849305
+    assert notes[1].model.model_id == 1631442296
+    assert notes[0].guid != notes[1].guid
+
+
+def test_unified_guid_is_stable_across_runs():
+    first = CardGenerator(selected_models=[1]).create_cards(make_card_data())
+    second = CardGenerator(selected_models=[1, 2, 3]).create_cards(make_card_data())
+
+    assert first[0].guid == second[0].guid
 
 
 def test_build_cloze_text_wraps_first_occurrence_case_insensitive():
@@ -77,14 +119,11 @@ def test_cloze_note_skipped_when_word_not_in_example():
     assert notes == []
 
 
-def test_example_audio_field_lands_last_on_v2_models():
-    generator = CardGenerator(selected_models=[CardGenerator.EN_RU_TYPING,
-                                               CardGenerator.EN_RU_CHOICE])
+def test_example_audio_lands_in_its_frozen_slot():
+    notes = CardGenerator(selected_models=[CardGenerator.EN_RU_TYPING]).create_cards(
+        make_card_data(), example_audio_path="x_example.mp3")
 
-    notes = generator.create_cards(make_card_data(), example_audio_path="x_example.mp3")
-
-    for note in notes:
-        assert note.fields[-1] == "[sound:dojo_5e09bf57_example.mp3]"
+    assert notes[0].fields[5] == "[sound:dojo_5e09bf57_example.mp3]"
 
 
 def test_cloze_note_carries_no_example_audio():
@@ -98,14 +137,15 @@ def test_cloze_note_carries_no_example_audio():
 def test_example_audio_field_empty_without_path():
     notes = CardGenerator(selected_models=[CardGenerator.EN_RU_TYPING]).create_cards(make_card_data())
 
-    assert notes[0].fields[-1] == ""
+    assert notes[0].fields[5] == ""
 
 
-def test_sync_names_cover_v2_cloze_and_legacy():
+def test_sync_names_cover_unified_cloze_and_legacy():
     from utils.card_generator import model_names_for_sync
     names = model_names_for_sync()
-    assert "EN-RU Typing Model v2" in names
+    assert "EN-RU Vocabulary" in names
     assert "EN-RU Cloze Model" in names
-    assert "EN-RU Typing Model" in names
-    assert "EN-RU Scramble Model" in names
+    assert "EN-RU Typing Model v2" in names       # v2, now legacy
+    assert "RU-EN Scramble Model v2" in names
+    assert "EN-RU Typing Model" in names          # v1 legacy
     assert "RU-EN Scramble Model" in names
