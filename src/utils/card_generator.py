@@ -8,6 +8,7 @@ from models import ru_en_typing_model
 from models import en_ru_choice_model
 from models import ru_en_choice_model
 from models import ru_en_scramble_model
+from models import en_ru_cloze_model
 from utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -18,7 +19,31 @@ ALL_MODELS = [
     en_ru_choice_model.model,
     ru_en_choice_model.model,
     ru_en_scramble_model.model,
+    en_ru_cloze_model.model,
 ]
+
+# Note-type names retired by the v2 migration; mature cards may still live on them
+LEGACY_MODEL_NAMES = [
+    "EN-RU Typing Model", "RU-EN Typing Model",
+    "EN-RU Choice Model", "RU-EN Choice Model",
+    "EN-RU Scramble Model", "RU-EN Scramble Model",
+]
+
+
+def model_names_for_sync() -> list:
+    """Model names to scan for mature words: current types plus retired v1 names."""
+    return [model.name for model in ALL_MODELS] + LEGACY_MODEL_NAMES
+
+
+def build_cloze_text(word: str, example: str):
+    """Wrap the first whole-word, case-insensitive occurrence of word in {{c1::...}}."""
+    if not example:
+        return None
+    match = re.search(r"(?<![A-Za-z])" + re.escape(word) + r"(?![A-Za-z])",
+                      example, re.IGNORECASE)
+    if match is None:
+        return None
+    return f"{example[:match.start()]}{{{{c1::{match.group(0)}}}}}{example[match.end():]}"
 
 
 def safe_media_name(text: str) -> str:
@@ -63,6 +88,7 @@ class CardGenerator:
     EN_RU_CHOICE = 3
     RU_EN_CHOICE = 4
     RU_EN_SCRAMBLE = 5
+    EN_CLOZE = 6
     
     # Mapping of model numbers to names
     MODEL_NAMES = {
@@ -71,6 +97,7 @@ class CardGenerator:
         EN_RU_CHOICE: "EN→RU Choice",
         RU_EN_CHOICE: "RU→EN Choice",
         RU_EN_SCRAMBLE: "RU→EN Scramble",
+        EN_CLOZE: "EN-RU Cloze",
     }
     
     def __init__(self, selected_models: list = None):
@@ -85,17 +112,19 @@ class CardGenerator:
         self.model_en_ru_choice = en_ru_choice_model.model
         self.model_ru_en_choice = ru_en_choice_model.model
         self.model_ru_en_scramble = ru_en_scramble_model.model
+        self.model_en_cloze = en_ru_cloze_model.model
         
         # Use all models if not specified
         if selected_models is None:
             self.selected_models = [self.EN_RU_TYPING, self.RU_EN_TYPING, 
                                    self.EN_RU_CHOICE, self.RU_EN_CHOICE, 
-                                   self.RU_EN_SCRAMBLE]
+                                   self.RU_EN_SCRAMBLE, self.EN_CLOZE]
         else:
             self.selected_models = selected_models
     
     def create_cards(self, card_data: CardData, audio_path: str = None,
-                    image_path: str = None) -> List[genanki.Note]:
+                    image_path: str = None,
+                    example_audio_path: str = None) -> List[genanki.Note]:
         """
         Create a set of flashcards for one word based on selected models.
         
@@ -112,6 +141,8 @@ class CardGenerator:
         # Prepare audio and image
         audio_field = f"[sound:{card_data.safe_filename}.mp3]" if audio_path else ""
         image_field = f'<img src="{card_data.safe_filename}.jpg">' if image_path else ""
+        example_audio_field = (f"[sound:{card_data.safe_filename}_example.mp3]"
+                               if example_audio_path else "")
         
         try:
             # EN → RU typing card
@@ -120,7 +151,7 @@ class CardGenerator:
                     VocabNote(
                         model=self.model_en_ru_typing,
                         fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field, image_field],
+                               audio_field, image_field, example_audio_field],
                     )
                 )
             
@@ -130,7 +161,7 @@ class CardGenerator:
                     VocabNote(
                         model=self.model_ru_en_typing,
                         fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field, image_field],
+                               audio_field, image_field, example_audio_field],
                     )
                 )
             
@@ -140,7 +171,7 @@ class CardGenerator:
                     VocabNote(
                         model=self.model_en_ru_choice,
                         fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field] + card_data.incorrect_ru + [image_field],
+                               audio_field] + card_data.incorrect_ru + [image_field, example_audio_field],
                     )
                 )
             
@@ -150,7 +181,7 @@ class CardGenerator:
                     VocabNote(
                         model=self.model_ru_en_choice,
                         fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field] + card_data.incorrect_en + [image_field],
+                               audio_field] + card_data.incorrect_en + [image_field, example_audio_field],
                     )
                 )
             
@@ -160,9 +191,23 @@ class CardGenerator:
                     VocabNote(
                         model=self.model_ru_en_scramble,
                         fields=[card_data.english, card_data.russian, card_data.example,
-                               audio_field, image_field],
+                               audio_field, image_field, example_audio_field],
                     )
                 )
+            
+            # EN cloze card: the example with the word hidden
+            if self.EN_CLOZE in self.selected_models:
+                cloze_text = build_cloze_text(card_data.english, card_data.example)
+                if cloze_text is None:
+                    logger.warning(f"No exact occurrence of '{card_data.english}' "
+                                   "in its example - cloze card skipped")
+                else:
+                    notes.append(
+                        VocabNote(
+                            model=self.model_en_cloze,
+                            fields=[card_data.english, cloze_text, card_data.russian],
+                        )
+                    )
             
             logger.debug(f"Successfully created {len(notes)} flashcards for word: {card_data.english}")
             return notes

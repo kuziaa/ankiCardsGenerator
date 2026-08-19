@@ -8,5 +8,8 @@ CX=yourGoogleCustomSearchCx
 #DECK_ID=999004
 DECK_NAME=Custom EN-RU Vocabulary Deck
 
+# Example-sentence audio on card backs (doubles TTS calls). Set FALSE to disable.
+EXAMPLE_AUDIO=TRUE
+
 # AnkiConnect endpoint for --push and the learned-words sync (optional)
 #ANKICONNECT_URL=http://127.0.0.1:8765

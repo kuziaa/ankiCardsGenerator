@@ -8,6 +8,9 @@ changing them breaks note types in existing Anki collections.
 
 import genanki
 
+# v1 note-type ids, retired by the v2 migration - never reuse
+RETIRED_MODEL_IDS = frozenset({73727116, 4392726, 2343456, 23436536, 234556757})
+
 CARD_CSS = """\
         .card {
             font-family: arial;
@@ -90,6 +93,7 @@ _TYPING_AFMT = """
 
                 <hr id=answer>
                 {{Example}}
+                {{ExampleAudio}}
             """
 
 _CHOICE_SCRIPT = """<script>
@@ -175,6 +179,7 @@ _CHOICE_AFMT = """
                 <hr id=answer>
                 __AUDIO_AFTER_HR__
                 {{Example}}
+                {{ExampleAudio}}
             """
 
 
@@ -190,7 +195,8 @@ def _render(template: str, mapping: dict) -> str:
 
 
 def make_typing_model(model_id: int, direction: str, prompt_field: str,
-                      answer_field: str, audio_in_answer: bool) -> genanki.Model:
+                      answer_field: str, audio_in_answer: bool,
+                      name_suffix: str = "") -> genanki.Model:
     """Typing card: prompt on the front, the answer is typed in.
 
     Audio is always on the front; audio_in_answer controls the back side.
@@ -202,13 +208,14 @@ def make_typing_model(model_id: int, direction: str, prompt_field: str,
     }
     return genanki.Model(
         model_id,
-        f"{direction} Typing Model",
+        f"{direction} Typing Model{name_suffix}",
         fields=[
             {"name": "English"},
             {"name": "Russian"},
             {"name": "Example"},
             {"name": "Audio"},
             {"name": "Image"},
+            {"name": "ExampleAudio"},
         ],
         templates=[
             {
@@ -223,7 +230,7 @@ def make_typing_model(model_id: int, direction: str, prompt_field: str,
 
 def make_choice_model(model_id: int, direction: str, prompt_field: str,
                       answer_field: str, incorrect_prefix: str,
-                      audio_on_front: bool) -> genanki.Model:
+                      audio_on_front: bool, name_suffix: str = "") -> genanki.Model:
     """Multiple-choice card with shuffled answer buttons.
 
     audio_on_front=False keeps the pronunciation off the question side (it
@@ -240,7 +247,7 @@ def make_choice_model(model_id: int, direction: str, prompt_field: str,
     }
     return genanki.Model(
         model_id,
-        f"{direction} Choice Model",
+        f"{direction} Choice Model{name_suffix}",
         fields=[
             {"name": "English"},
             {"name": "Russian"},
@@ -251,6 +258,7 @@ def make_choice_model(model_id: int, direction: str, prompt_field: str,
             {"name": f"{incorrect_prefix}3"},
             {"name": f"{incorrect_prefix}4"},
             {"name": "Image"},
+            {"name": "ExampleAudio"},
         ],
         templates=[
             {

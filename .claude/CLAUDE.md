@@ -41,7 +41,7 @@ validation (`utils/csv_validator.py`; word-level checks are shared between
 both input formats via `validate_word_entries`) → known-words filter
 (`utils/known_words.py`, ledger at `known_words.json`) → per-word media
 (`utils/media_manager.py`, cached under `media/<source stem>/`) → notes
-(`utils/card_generator.py`, 5 models) → genanki package to
+(`utils/card_generator.py`, 6 models) → genanki package to
 `results/<stem>.apkg`.
 
 Validation runs **before** the expensive media phase and fails fast with
@@ -56,7 +56,11 @@ stays separate.
 
 - **Model IDs and field lists** in `src/models/` are frozen and guarded by
   `tests/test_models_factory.py`. Never renumber models or add/remove/reorder
-  fields of an existing model.
+  fields of an existing model; `ExampleAudio` is always the LAST field.
+  Current (v2) ids: typing 1298336501 / 1354702052, choice 1427185897 /
+  1495623708, scramble 1563008841, cloze 1631442296. Retired v1 ids
+  (73727116, 4392726, 2343456, 23436536, 234556757) must never be reused
+  (`RETIRED_MODEL_IDS` in `models/factory.py`).
 - **Note GUID** is `guid_for(word, model_id)` (`VocabNote` in
   `card_generator.py`): re-importing after edits updates notes instead of
   duplicating them. Do not fall back to default genanki GUIDs.

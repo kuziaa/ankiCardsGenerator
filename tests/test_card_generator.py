@@ -1,5 +1,5 @@
 from anki_generator import derive_deck_id
-from utils.card_generator import CardData, CardGenerator, safe_media_name
+from utils.card_generator import CardData, CardGenerator, build_cloze_text, safe_media_name
 
 
 def make_card_data():
@@ -40,3 +40,72 @@ def test_choice_card_uses_russian_distractors_for_en_ru_choice():
 
     assert len(notes) == 1
     assert notes[0].fields[4:8] == ["зал ожидания", "игровая площадка", "спальная комната", "офис"]
+
+
+def test_build_cloze_text_wraps_first_occurrence_case_insensitive():
+    assert build_cloze_text("dojo", "She trained in the Dojo daily.") ==         "She trained in the {{c1::Dojo}} daily."
+
+
+def test_build_cloze_text_handles_multiword_expressions():
+    assert build_cloze_text("rolled over", "The ship rolled over slowly.") ==         "The ship {{c1::rolled over}} slowly."
+
+
+def test_build_cloze_text_wraps_only_the_first_occurrence():
+    assert build_cloze_text("dojo", "dojo here, dojo there") ==         "{{c1::dojo}} here, dojo there"
+
+
+def test_build_cloze_text_returns_none_when_word_absent():
+    assert build_cloze_text("sport", "One moon sported five thousand.") is None
+    assert build_cloze_text("dojo", "") is None
+
+
+def test_cloze_note_structure():
+    generator = CardGenerator(selected_models=[CardGenerator.EN_CLOZE])
+
+    notes = generator.create_cards(make_card_data())
+
+    assert len(notes) == 1
+    assert notes[0].model.model_id == 1631442296
+    assert notes[0].fields == ["dojo", "She trained in the {{c1::dojo}}.", "додзё"]
+
+
+def test_cloze_note_skipped_when_word_not_in_example():
+    card = CardData("sport", "спорт", "One moon sported five thousand.", [], [])
+
+    notes = CardGenerator(selected_models=[CardGenerator.EN_CLOZE]).create_cards(card)
+
+    assert notes == []
+
+
+def test_example_audio_field_lands_last_on_v2_models():
+    generator = CardGenerator(selected_models=[CardGenerator.EN_RU_TYPING,
+                                               CardGenerator.EN_RU_CHOICE])
+
+    notes = generator.create_cards(make_card_data(), example_audio_path="x_example.mp3")
+
+    for note in notes:
+        assert note.fields[-1] == "[sound:dojo_5e09bf57_example.mp3]"
+
+
+def test_cloze_note_carries_no_example_audio():
+    generator = CardGenerator(selected_models=[CardGenerator.EN_CLOZE])
+
+    notes = generator.create_cards(make_card_data(), example_audio_path="x_example.mp3")
+
+    assert len(notes[0].fields) == 3
+
+
+def test_example_audio_field_empty_without_path():
+    notes = CardGenerator(selected_models=[CardGenerator.EN_RU_TYPING]).create_cards(make_card_data())
+
+    assert notes[0].fields[-1] == ""
+
+
+def test_sync_names_cover_v2_cloze_and_legacy():
+    from utils.card_generator import model_names_for_sync
+    names = model_names_for_sync()
+    assert "EN-RU Typing Model v2" in names
+    assert "EN-RU Cloze Model" in names
+    assert "EN-RU Typing Model" in names
+    assert "EN-RU Scramble Model" in names
+    assert "RU-EN Scramble Model" in names

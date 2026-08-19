@@ -38,6 +38,7 @@ MARKDOWN_SAFE_MODELS = [
     CardGenerator.EN_RU_TYPING,
     CardGenerator.RU_EN_TYPING,
     CardGenerator.RU_EN_SCRAMBLE,
+    CardGenerator.EN_CLOZE,
 ]
 
 
@@ -192,7 +193,7 @@ def parse_args(argv: list = None) -> CliOptions:
                 parser.error(str(e))
             invalid_models = [model for model in selected_models if model not in MARKDOWN_SAFE_MODELS]
             if invalid_models:
-                parser.error("--from-md supports only models 1, 2, and 5")
+                parser.error("--from-md supports only models 1, 2, 5, and 6")
             options.selected_models = selected_models
         else:
             options.selected_models = MARKDOWN_SAFE_MODELS.copy()
@@ -280,15 +281,16 @@ def select_card_models() -> list:
     logger.info("3. EN→RU Choice")
     logger.info("4. RU→EN Choice")
     logger.info("5. RU→EN Scramble")
-    logger.info("6. All models")
+    logger.info("6. EN-RU Cloze")
+    logger.info("7. All models")
     
     while True:
         try:
-            choice = input("\nEnter model numbers separated by space (e.g., '1 3 5') or '6' for all: ").strip()
+            choice = input("\nEnter model numbers separated by space (e.g., '1 3 5') or '7' for all: ").strip()
             
-            if choice == "6":
-                selected_models = [1, 2, 3, 4, 5]
-                logger.info(f"✓ Selected: All models (1, 2, 3, 4, 5)")
+            if choice == "7":
+                selected_models = [1, 2, 3, 4, 5, 6]
+                logger.info(f"✓ Selected: All models (1, 2, 3, 4, 5, 6)")
                 return selected_models
             
             # Parse individual numbers
@@ -299,8 +301,8 @@ def select_card_models() -> list:
                 logger.warning("✗ No models selected. Please enter at least one number.")
                 continue
             
-            if not all(1 <= c <= 5 for c in choices):
-                logger.warning("✗ Invalid choice. Please enter numbers between 1 and 5.")
+            if not all(1 <= c <= 6 for c in choices):
+                logger.warning("✗ Invalid choice. Please enter numbers between 1 and 6.")
                 continue
             
             # Remove duplicates and sort
@@ -395,6 +397,11 @@ def load_cards_from_csv(csv_file_path: str) -> list:
         return []
 
 
+def example_audio_enabled(properties: dict) -> bool:
+    """EXAMPLE_AUDIO=FALSE in config.properties disables example-sentence audio."""
+    return properties.get('EXAMPLE_AUDIO', 'true').strip().lower() != 'false'
+
+
 def derive_deck_id(source_stem: str) -> int:
     """Stable per-source deck ID so different inputs never merge on import."""
     return (zlib.crc32(source_stem.encode('utf-8')) % (1 << 30)) + (1 << 30)
@@ -436,10 +443,10 @@ def _load_and_validate_markdown(markdown_path: Path):
 
 def _sync_learned_words_from_anki(ledger_path: Path, anki_url: str) -> None:
     """Best-effort: record words already mature in Anki as known."""
-    from utils.card_generator import ALL_MODELS
+    from utils.card_generator import model_names_for_sync
     client = AnkiConnectClient(url=anki_url)
     try:
-        words = fetch_mature_words(client, [model.name for model in ALL_MODELS])
+        words = fetch_mature_words(client, model_names_for_sync())
     except AnkiNotAvailableError:
         logger.info("Anki is not running - skipping learned-words sync")
         return
@@ -488,6 +495,7 @@ def main(options: CliOptions = None):
     deck_id_override = properties.get('DECK_ID', '')
     deck_name = properties.get('DECK_NAME', 'Custom EN-RU Vocabulary Deck')
     anki_url = properties.get('ANKICONNECT_URL', 'http://127.0.0.1:8765')
+    generate_example_audio = example_audio_enabled(properties)
     
     # Transform paths relative to project root directory
     root_path = project_root()
@@ -594,6 +602,16 @@ def main(options: CliOptions = None):
             if audio_path:
                 media_files.append(audio_path)
             
+            # Example-sentence audio (second mp3, played on the back)
+            example_audio_path = None
+            if generate_example_audio and card_data.example:
+                example_audio_path = media_manager.generate_audio(
+                    text=card_data.example,
+                    safe_filename=f"{card_data.safe_filename}_example",
+                )
+                if example_audio_path:
+                    media_files.append(example_audio_path)
+            
             # Download image
             image_path = media_manager.download_image(
                 search_term=card_data.english,
@@ -606,7 +624,8 @@ def main(options: CliOptions = None):
             notes = card_generator.create_cards(
                 card_data=card_data,
                 audio_path=audio_path,
-                image_path=image_path
+                image_path=image_path,
+                example_audio_path=example_audio_path
             )
             
             if notes:
