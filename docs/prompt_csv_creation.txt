@@ -30,7 +30,13 @@ Convert the following table of English words/expressions into a **CSV table** wi
         
     - They must **NOT match the meaning** of the correct translation.
         
-6. **CSV correctness**
+6. **Slash formatting must not give away the answer**
+    
+    - If the correct answer (`english` or `russian`) is written with a slash (e.g. `запечатанный / герметично закрытый`), then **one or more incorrect options in the same group must also be written with a slash**.
+        
+    - When the correct answer is a single word, slash-formatted incorrect options are still allowed and welcome — the presence or absence of a slash must never signal which option is correct.
+        
+7. **CSV correctness**
     
     - Each data row must be on a **single line** and contain **exactly 11 comma-separated fields**.
         
