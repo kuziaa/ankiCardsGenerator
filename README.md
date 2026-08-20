@@ -378,6 +378,11 @@ The project supports creating up to 5 different types of flashcards per word:
 - **Format**: Cloze deletion (`{{c1::word}}`) with a typing box (`{{type:cloze:Text}}`), so the answer is produced rather than recognised; the audio of the whole sentence plays once the answer is shown
 - Skipped with a warning when the word does not occur verbatim in its example
 
+New cards are introduced in template order: EN-RU Choice, RU-EN Choice,
+RU-EN Scramble, RU-EN Typing, EN-RU Typing - recognition before production.
+Anki's default sort ("card type, then order gathered") follows that order;
+the cloze note type is separate and mixes into the first group.
+
 ### Note types v3: one note per word
 
 Since the v3 migration a word is a single `EN-RU Vocabulary` note carrying

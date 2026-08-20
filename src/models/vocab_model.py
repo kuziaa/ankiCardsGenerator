@@ -1,10 +1,15 @@
-"""The unified vocabulary note type (v3): one note per word, five templates.
+"""The unified vocabulary note type (v4): one note per word, five templates.
 
 Card existence is controlled by gate fields: each template's front is wrapped
 in a {{#Gate}}...{{/Gate}} section, so an empty gate renders an empty front
 and neither genanki nor Anki generates that card. The gate value itself never
 appears on a card. The model id, the 19-field order and the template order
-are frozen: changing them corrupts existing Anki collections.
+are frozen: changing them corrupts existing Anki collections, because a
+card's ord is what binds it to a template.
+
+Template order is the study order Anki shows new cards in: recognition
+(choice, scramble) before production (typing). Gate fields keep their own
+frozen order, so a template finds its gate by name, not by position.
 """
 
 import genanki
@@ -14,8 +19,8 @@ from models.factory import (CARD_CSS, CHOICE_WIDGET_CSS, IMAGE_CSS,
                             _CHOICE_SCRIPT, _SCRAMBLE_AFMT, _SCRAMBLE_QFMT,
                             _TYPING_AFMT, _TYPING_QFMT, _render)
 
-MODEL_ID = 1712849305
-MODEL_NAME = "EN-RU Vocabulary"
+MODEL_ID = 1868432571
+MODEL_NAME = "EN-RU Vocabulary v4"
 GATE_ON = "y"
 # Order is frozen: card ords in existing collections depend on it
 GATE_FIELDS = ["EnRuTyping", "RuEnTyping", "EnRuChoice", "RuEnChoice", "Scramble"]
@@ -46,22 +51,6 @@ _FIELDS = (
 
 _TEMPLATES = [
     {
-        "name": "EN-RU Typing",
-        "qfmt": _gated(_render(_TYPING_QFMT, {
-            "__PROMPT__": "English", "__ANSWER__": "Russian"}), "EnRuTyping"),
-        "afmt": _render(_TYPING_AFMT, {
-            "__PROMPT__": "English", "__ANSWER__": "Russian",
-            "__AUDIO_LINE__": "{{Audio}}<br><br><br>"}),
-    },
-    {
-        "name": "RU-EN Typing",
-        "qfmt": _gated(_render(_TYPING_QFMT, {
-            "__PROMPT__": "Russian", "__ANSWER__": "English"}), "RuEnTyping"),
-        "afmt": _render(_TYPING_AFMT, {
-            "__PROMPT__": "Russian", "__ANSWER__": "English",
-            "__AUDIO_LINE__": None}),
-    },
-    {
         "name": "EN-RU Choice",
         "qfmt": _gated(_render(_CHOICE_QFMT, {
             "__PROMPT__": "English", "__ANSWER__": "Russian",
@@ -87,6 +76,22 @@ _TEMPLATES = [
         "name": "RU-EN Scramble",
         "qfmt": _gated(_SCRAMBLE_QFMT, "Scramble"),
         "afmt": _SCRAMBLE_AFMT,
+    },
+    {
+        "name": "RU-EN Typing",
+        "qfmt": _gated(_render(_TYPING_QFMT, {
+            "__PROMPT__": "Russian", "__ANSWER__": "English"}), "RuEnTyping"),
+        "afmt": _render(_TYPING_AFMT, {
+            "__PROMPT__": "Russian", "__ANSWER__": "English",
+            "__AUDIO_LINE__": None}),
+    },
+    {
+        "name": "EN-RU Typing",
+        "qfmt": _gated(_render(_TYPING_QFMT, {
+            "__PROMPT__": "English", "__ANSWER__": "Russian"}), "EnRuTyping"),
+        "afmt": _render(_TYPING_AFMT, {
+            "__PROMPT__": "English", "__ANSWER__": "Russian",
+            "__AUDIO_LINE__": "{{Audio}}<br><br><br>"}),
     },
 ]
 

@@ -13,6 +13,8 @@ RETIRED_MODEL_IDS = frozenset({
     1298336501, 1354702052, 1427185897, 1495623708, 1563008841,
     # first cloze type: no typing input, no example audio
     1631442296,
+    # v3 unified type: templates in the old study order
+    1712849305,
 })
 
 CARD_CSS = """\
