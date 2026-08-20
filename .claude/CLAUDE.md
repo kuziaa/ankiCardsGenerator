@@ -58,10 +58,16 @@ card existence per note is controlled by the 5 gate fields, which mirror the
   `tests/test_vocab_model.py`. Never renumber models or add/remove/reorder
   fields of an existing model. Current (v3) ids: unified vocabulary
   1712849305 (19 fields: 6 data, 8 distractors, then 5 gate fields whose
-  non-empty value means "this card exists"), cloze 1631442296. Retired ids
-  (v1: 73727116, 4392726, 2343456, 23436536, 234556757; v2: 1298336501,
-  1354702052, 1427185897, 1495623708, 1563008841) must never be reused
+  non-empty value means "this card exists"), cloze 1795263408 (English,
+  Text, Hint, ExampleAudio). Retired ids (v1: 73727116, 4392726, 2343456,
+  23436536, 234556757; v2: 1298336501, 1354702052, 1427185897, 1495623708,
+  1563008841; first cloze: 1631442296) must never be reused
   (`RETIRED_MODEL_IDS` in `models/factory.py`).
+- A note type already present in the collection is never rewritten:
+  `ensure_models` creates missing types and skips existing ones by name. A
+  template or field change therefore needs a new id **and** a new name,
+  otherwise the old note type keeps serving new notes - deleting the deck
+  does not remove its note type.
 - **Note GUID** is `guid_for(word, model_id)` (`VocabNote` in
   `card_generator.py`): re-importing after edits updates notes instead of
   duplicating them. Do not fall back to default genanki GUIDs.

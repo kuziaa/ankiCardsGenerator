@@ -73,8 +73,24 @@ def test_all_models_produce_unified_plus_cloze_notes():
 
     assert len(notes) == 2
     assert notes[0].model.model_id == 1712849305
-    assert notes[1].model.model_id == 1631442296
+    assert notes[1].model.model_id == 1795263408
     assert notes[0].guid != notes[1].guid
+
+
+def test_cloze_note_carries_the_example_audio():
+    generator = CardGenerator(selected_models=[6])
+
+    notes = generator.create_cards(make_card_data(), example_audio_path="dojo_example.mp3")
+
+    assert notes[0].fields[3] == "[sound:%s_example.mp3]" % safe_media_name("dojo")
+
+
+def test_cloze_note_leaves_the_audio_field_empty_without_audio():
+    generator = CardGenerator(selected_models=[6])
+
+    notes = generator.create_cards(make_card_data())
+
+    assert notes[0].fields[3] == ""
 
 
 def test_unified_guid_is_stable_across_runs():
@@ -107,8 +123,8 @@ def test_cloze_note_structure():
     notes = generator.create_cards(make_card_data())
 
     assert len(notes) == 1
-    assert notes[0].model.model_id == 1631442296
-    assert notes[0].fields == ["dojo", "She trained in the {{c1::dojo}}.", "додзё"]
+    assert notes[0].model.model_id == 1795263408
+    assert notes[0].fields == ["dojo", "She trained in the {{c1::dojo}}.", "додзё", ""]
 
 
 def test_cloze_note_skipped_when_word_not_in_example():
@@ -126,12 +142,13 @@ def test_example_audio_lands_in_its_frozen_slot():
     assert notes[0].fields[5] == "[sound:dojo_5e09bf57_example.mp3]"
 
 
-def test_cloze_note_carries_no_example_audio():
+def test_cloze_note_plays_the_example_audio_after_the_answer():
     generator = CardGenerator(selected_models=[CardGenerator.EN_CLOZE])
 
     notes = generator.create_cards(make_card_data(), example_audio_path="x_example.mp3")
 
-    assert len(notes[0].fields) == 3
+    assert len(notes[0].fields) == 4
+    assert notes[0].fields[3].startswith("[sound:")
 
 
 def test_example_audio_field_empty_without_path():

@@ -22,6 +22,7 @@ LEGACY_MODEL_NAMES = [
     "EN-RU Typing Model v2", "RU-EN Typing Model v2",
     "EN-RU Choice Model v2", "RU-EN Choice Model v2",
     "RU-EN Scramble Model v2",
+    "EN-RU Cloze Model",
 ]
 
 
@@ -163,7 +164,8 @@ class CardGenerator:
                     notes.append(
                         VocabNote(
                             model=en_ru_cloze_model.model,
-                            fields=[card_data.english, cloze_text, card_data.russian],
+                            fields=[card_data.english, cloze_text, card_data.russian,
+                                    example_audio_field],
                         )
                     )
 

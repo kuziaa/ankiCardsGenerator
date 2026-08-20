@@ -180,7 +180,7 @@ Model selection accepts `all` or comma-separated model numbers:
 - `3` = EN→RU Choice
 - `4` = RU→EN Choice
 - `5` = RU→EN Scramble
-- `6` = EN-RU Cloze (the example sentence with the word hidden, collapsible Russian hint)
+- `6` = EN-RU Cloze (the example sentence with the word hidden, typed answer, collapsible Russian hint, sentence audio on the back)
 
 For a no-network run, use cached local media only:
 
@@ -371,7 +371,8 @@ The project supports creating up to 5 different types of flashcards per word:
 ### 6. EN-RU Cloze
 - **What**: The example sentence from the book with the word hidden
 - **Use case**: Recalling the word in its real context; a collapsible Russian hint helps without giving the answer away
-- **Format**: Cloze deletion (`{{c1::word}}`); skipped with a warning when the word does not occur verbatim in its example
+- **Format**: Cloze deletion (`{{c1::word}}`) with a typing box (`{{type:cloze:Text}}`), so the answer is produced rather than recognised; the audio of the whole sentence plays once the answer is shown
+- Skipped with a warning when the word does not occur verbatim in its example
 
 ### Note types v3: one note per word
 
