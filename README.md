@@ -143,6 +143,7 @@ All options at a glance (run `anki-cards-generator --help` for the same list):
 | `--push` | Push cards into a running Anki via AnkiConnect instead of writing an `.apkg` file |
 | `--overwrite-media` | With `--push`: overwrite media files that already exist in the Anki collection |
 | `--images-root DIR` | Root folder of the manual image inbox; the source file name is appended |
+| `--no-image-search` | Never query the image search: use only inbox and cached images |
 
 Running with no options keeps the interactive mode: the script asks for the
 CSV file and the card models.
@@ -230,6 +231,9 @@ abstract ones. Any image dropped into the inbox wins over the search:
 - A curated file also beats a previously downloaded image, so replacing a bad
   picture is a matter of dropping a file and rerunning.
 - With a fully curated inbox a deck builds with `--offline` and no API keys.
+- `--no-image-search` keeps audio generation but never queries the image
+  search, so a curated inbox stays untouched and words deliberately left
+  without a picture do not trigger a lookup on every run.
 - The run ends with `Images: N manual, M auto, K missing` and warns about
   inbox files that match no word - usually a typo in a file name.
 
