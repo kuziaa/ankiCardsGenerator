@@ -9,13 +9,14 @@ CLOZE_CSS = """\
         }"""
 
 model = genanki.Model(
-    1631442296,
-    "EN-RU Cloze Model",
+    1795263408,
+    "EN-RU Cloze",
     model_type=genanki.Model.CLOZE,
     fields=[
         {"name": "English"},
         {"name": "Text"},
         {"name": "Hint"},
+        {"name": "ExampleAudio"},
     ],
     templates=[
         {
@@ -23,12 +24,17 @@ model = genanki.Model(
             "qfmt": """
                 {{cloze:Text}}
                 <br><br>
+                {{type:cloze:Text}}
+                <br>
                 {{hint:Hint}}
             """,
             "afmt": """
                 {{cloze:Text}}
                 <hr id=answer>
+                {{type:cloze:Text}}
+                <br>
                 {{Hint}}
+                {{ExampleAudio}}
             """,
         }
     ],

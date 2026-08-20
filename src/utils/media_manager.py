@@ -43,7 +43,7 @@ class MediaManager:
     """Class for managing media file downloads and generation (audio, images)."""
 
     def __init__(self, media_dir: str = "media", api_key: str = "", cx: str = "",
-                 offline: bool = False, inbox_dir: str = ""):
+                 offline: bool = False, inbox_dir: str = "", search_images: bool = True):
         """
         Initialize the media manager.
 
@@ -53,6 +53,7 @@ class MediaManager:
             cx: Google Custom Search CX parameter
             offline: Use only validated cached media files and skip network calls
             inbox_dir: Directory with manually curated images for this source file
+            search_images: Query the image search for words the inbox and cache do not cover
         """
         self.media_dir = Path(media_dir)
         self.api_key = api_key
@@ -60,6 +61,7 @@ class MediaManager:
         self.offline = offline
         self.has_api_keys = bool(api_key and cx)
         self.search_disabled = False
+        self.search_images = search_images
         self.inbox_index = index_inbox(inbox_dir) if inbox_dir else {}
         self.manual_count = 0
         self.auto_count = 0
@@ -185,6 +187,10 @@ class MediaManager:
                 return str(image_path)
             logger.warning(f"Cached image is corrupt, removing: {image_path}")
             image_path.unlink()
+
+        if not self.search_images:
+            logger.debug(f"Skipping image search for '{search_term}' (search disabled)")
+            return None
 
         if self.offline:
             logger.debug(f"Skipping image download for '{search_term}' (offline mode)")

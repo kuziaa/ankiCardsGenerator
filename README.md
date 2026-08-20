@@ -143,6 +143,7 @@ All options at a glance (run `anki-cards-generator --help` for the same list):
 | `--push` | Push cards into a running Anki via AnkiConnect instead of writing an `.apkg` file |
 | `--overwrite-media` | With `--push`: overwrite media files that already exist in the Anki collection |
 | `--images-root DIR` | Root folder of the manual image inbox; the source file name is appended |
+| `--no-image-search` | Never query the image search: use only inbox and cached images |
 
 Running with no options keeps the interactive mode: the script asks for the
 CSV file and the card models.
@@ -180,7 +181,7 @@ Model selection accepts `all` or comma-separated model numbers:
 - `3` = EN→RU Choice
 - `4` = RU→EN Choice
 - `5` = RU→EN Scramble
-- `6` = EN-RU Cloze (the example sentence with the word hidden, collapsible Russian hint)
+- `6` = EN-RU Cloze (the example sentence with the word hidden, typed answer, collapsible Russian hint, sentence audio on the back)
 
 For a no-network run, use cached local media only:
 
@@ -230,6 +231,9 @@ abstract ones. Any image dropped into the inbox wins over the search:
 - A curated file also beats a previously downloaded image, so replacing a bad
   picture is a matter of dropping a file and rerunning.
 - With a fully curated inbox a deck builds with `--offline` and no API keys.
+- `--no-image-search` keeps audio generation but never queries the image
+  search, so a curated inbox stays untouched and words deliberately left
+  without a picture do not trigger a lookup on every run.
 - The run ends with `Images: N manual, M auto, K missing` and warns about
   inbox files that match no word - usually a typo in a file name.
 
@@ -371,7 +375,8 @@ The project supports creating up to 5 different types of flashcards per word:
 ### 6. EN-RU Cloze
 - **What**: The example sentence from the book with the word hidden
 - **Use case**: Recalling the word in its real context; a collapsible Russian hint helps without giving the answer away
-- **Format**: Cloze deletion (`{{c1::word}}`); skipped with a warning when the word does not occur verbatim in its example
+- **Format**: Cloze deletion (`{{c1::word}}`) with a typing box (`{{type:cloze:Text}}`), so the answer is produced rather than recognised; the audio of the whole sentence plays once the answer is shown
+- Skipped with a warning when the word does not occur verbatim in its example
 
 ### Note types v3: one note per word
 

@@ -115,9 +115,10 @@ def test_retired_ids_cover_v1_and_v2_and_are_not_reused():
         73727116, 4392726, 2343456, 23436536, 234556757,
         # v2
         1298336501, 1354702052, 1427185897, 1495623708, 1563008841,
+        # first cloze type, replaced by the typing-enabled one
+        1631442296,
     }
     assert vocab_model.MODEL_ID not in RETIRED_MODEL_IDS
-    assert 1631442296 not in RETIRED_MODEL_IDS  # cloze stays current
 
 
 def test_service_fields_carry_editor_hints():

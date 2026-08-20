@@ -139,3 +139,31 @@ def test_cached_image_counts_as_auto(tmp_path):
     assert manager.download_image("dojo", "dojo_abc12345") is not None
     assert manager.auto_count == 1
     assert manager.manual_count == 0
+
+
+def test_search_disabled_never_touches_the_network(tmp_path):
+    manager = MediaManager(media_dir=str(tmp_path / "media"), api_key="key", cx="cx",
+                           search_images=False)
+    manager.session.get = lambda *args, **kwargs: pytest.fail("search must not run")
+
+    assert manager.download_image("dojo", "dojo_abc12345") is None
+    assert manager.auto_count == 0
+
+
+def test_search_disabled_still_uses_inbox_images(tmp_path):
+    inbox = make_inbox(tmp_path, "dojo.jpg", size=(120, 90))
+    manager = MediaManager(media_dir=str(tmp_path / "media"), api_key="key", cx="cx",
+                           search_images=False, inbox_dir=str(inbox))
+
+    assert manager.download_image("dojo", "dojo_abc12345") is not None
+    assert manager.manual_count == 1
+
+
+def test_search_disabled_still_uses_cached_images(tmp_path):
+    media = tmp_path / "media"
+    media.mkdir()
+    write_valid_jpeg(media / "dojo_abc12345.jpg")
+    manager = MediaManager(media_dir=str(media), api_key="key", cx="cx", search_images=False)
+
+    assert manager.download_image("dojo", "dojo_abc12345") is not None
+    assert manager.auto_count == 1

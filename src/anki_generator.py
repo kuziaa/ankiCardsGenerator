@@ -55,6 +55,7 @@ class CliOptions:
     include_known: bool = False
     push: bool = False
     overwrite_media: bool = False
+    no_image_search: bool = False
     images_root: str = None
 
 
@@ -117,6 +118,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="With --push: overwrite media files that already exist in the Anki collection.",
     )
     parser.add_argument(
+        '--no-image-search',
+        action='store_true',
+        help="Never query the image search: use only inbox and cached images.",
+    )
+    parser.add_argument(
         '--images-root',
         metavar='DIR',
         help="Root folder of the manual image inbox; the source file name is appended.",
@@ -177,7 +183,8 @@ def parse_args(argv: list = None) -> CliOptions:
     options = CliOptions(validate_only=args.validate, offline=args.offline,
                          include_known=args.include_known, push=args.push,
                          overwrite_media=args.overwrite_media,
-                         images_root=args.images_root)
+                         images_root=args.images_root,
+                         no_image_search=args.no_image_search)
     if args.from_md:
         try:
             options.markdown_path = resolve_existing_path(args.from_md)
@@ -611,7 +618,10 @@ def main(options: CliOptions = None):
         cx=cx,
         offline=options.offline,
         inbox_dir=str(inbox_dir),
+        search_images=not options.no_image_search,
     )
+    if options.no_image_search:
+        logger.info("Image search disabled - using inbox and cached images only")
     card_generator = CardGenerator(selected_models=selected_models)
     
     all_notes = []

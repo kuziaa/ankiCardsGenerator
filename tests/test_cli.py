@@ -189,3 +189,13 @@ def test_from_md_still_rejects_choice_models(tmp_path):
         parse_args(["--from-md", str(write_md_fixture(tmp_path)), "--models", "3"])
 
     assert exc_info.value.code == 2
+
+
+def test_no_image_search_flag_is_parsed():
+    options = parse_args(["--no-image-search"])
+
+    assert options.no_image_search is True
+
+
+def test_image_search_is_on_by_default():
+    assert parse_args([]).no_image_search is False
