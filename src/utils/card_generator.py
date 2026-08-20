@@ -23,6 +23,7 @@ LEGACY_MODEL_NAMES = [
     "EN-RU Choice Model v2", "RU-EN Choice Model v2",
     "RU-EN Scramble Model v2",
     "EN-RU Cloze Model",
+    "EN-RU Vocabulary",
 ]
 
 

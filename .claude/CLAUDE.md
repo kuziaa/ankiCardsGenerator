@@ -56,13 +56,20 @@ card existence per note is controlled by the 5 gate fields, which mirror the
 
 - **Model IDs and field lists** in `src/models/` are frozen and guarded by
   `tests/test_vocab_model.py`. Never renumber models or add/remove/reorder
-  fields of an existing model. Current (v3) ids: unified vocabulary
-  1712849305 (19 fields: 6 data, 8 distractors, then 5 gate fields whose
+  fields of an existing model. Current ids: unified vocabulary v4
+  1868432571 (19 fields: 6 data, 8 distractors, then 5 gate fields whose
   non-empty value means "this card exists"), cloze 1795263408 (English,
   Text, Hint, ExampleAudio). Retired ids (v1: 73727116, 4392726, 2343456,
   23436536, 234556757; v2: 1298336501, 1354702052, 1427185897, 1495623708,
-  1563008841; first cloze: 1631442296) must never be reused
+  1563008841; first cloze: 1631442296; v3 unified: 1712849305) must never be reused
   (`RETIRED_MODEL_IDS` in `models/factory.py`).
+- **Template order is the study order**: Anki's default new-card sort is
+  "card type, then order gathered", so template index decides which cards
+  come first. Current order is recognition before production: EN-RU Choice,
+  RU-EN Choice, RU-EN Scramble, RU-EN Typing, EN-RU Typing. Gate fields keep
+  their own frozen order, so templates find their gate by name - reordering
+  templates never touches the field layout, but it does remap card ords,
+  which is why it needs a new model id.
 - A note type already present in the collection is never rewritten:
   `ensure_models` creates missing types and skips existing ones by name. A
   template or field change therefore needs a new id **and** a new name,

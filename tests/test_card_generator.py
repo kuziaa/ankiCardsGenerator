@@ -31,8 +31,9 @@ def test_create_cards_returns_one_unified_note_with_gated_cards():
 
     assert len(notes) == 1
     note = notes[0]
-    assert note.model.model_id == 1712849305
-    assert sorted(card.ord for card in note.cards) == [0, 4]
+    assert note.model.model_id == 1868432571
+    # EN-RU Typing is the last template now, scramble the middle one
+    assert sorted(card.ord for card in note.cards) == [2, 4]
     assert note.fields[3] == "[sound:dojo_5e09bf57.mp3]"
     assert note.fields[4] == '<img src="dojo_5e09bf57.jpg">'
     assert note.fields[14:19] == ["y", "", "", "", "y"]
@@ -47,7 +48,7 @@ def test_unified_note_carries_both_distractor_sets():
     assert notes[0].fields[6:10] == ["зал ожидания", "игровая площадка",
                                      "спальная комната", "офис"]
     assert notes[0].fields[10:14] == ["mojo", "doge", "dose", "doze"]
-    assert sorted(card.ord for card in notes[0].cards) == [2]
+    assert sorted(card.ord for card in notes[0].cards) == [0]
 
 
 def test_distractors_fill_even_when_choice_models_are_unselected():
@@ -72,7 +73,7 @@ def test_all_models_produce_unified_plus_cloze_notes():
     notes = generator.create_cards(make_card_data())
 
     assert len(notes) == 2
-    assert notes[0].model.model_id == 1712849305
+    assert notes[0].model.model_id == 1868432571
     assert notes[1].model.model_id == 1795263408
     assert notes[0].guid != notes[1].guid
 
