@@ -172,7 +172,7 @@ so vault-style headers such as `Word / Expression`, `Translation (RU)` and
 exclusive. Markdown rows are validated like CSV rows (duplicates, hostile
 characters, malformed rows are reported with line numbers). Markdown tables do not include
 multiple-choice distractors, so markdown mode supports only models `1`, `2`,
-and `5`; `--models all` maps to those safe models.
+`5` and `6` (cloze); `--models all` maps to those safe models (`1,2,5,6`).
 
 Model selection accepts `all` or comma-separated model numbers:
 
@@ -441,7 +441,6 @@ ankiCardsGenerator/
 ├── pyproject.toml                 # Package metadata, entry point, pytest config
 ├── requirements.txt               # Dependencies
 ├── README.md                      # Documentation
-├── .github/workflows/tests.yml    # CI test workflow
 ├── docs/                          # Documentation and prompts
 │   ├── prompt_csv_creation.txt
 │   └── prompt_vocabulary_extraction.txt
@@ -468,13 +467,23 @@ ankiCardsGenerator/
 ├── results/                      # Generated APKG decks (not tracked)
 │   └── *.apkg
 ├── tests/                        # Pytest test suite
+│   ├── test_anki_connect.py
 │   ├── test_card_generator.py
 │   ├── test_cli.py
+│   ├── test_cloze_model.py
 │   ├── test_csv_validator.py
-│   └── test_media_manager.py
+│   ├── test_image_inbox.py
+│   ├── test_image_review.py
+│   ├── test_known_words.py
+│   ├── test_md_loader.py
+│   ├── test_media_manager.py
+│   └── test_vocab_model.py
 └── logs/                         # Execution logs (not tracked)
     └── anki_generator.log
 ```
+
+There is no CI workflow: run the tests locally before pushing with
+`python -m pytest tests/ -q`.
 
 ## Output Files
 
@@ -537,10 +546,9 @@ Each card contains:
    `create_cards()`
 3. Update `anki_generator.py` to include the new number in
    `select_card_models()`
-
-Adding a template to the existing note type makes the new card appear for
-every already-imported word. Note: in an existing Anki collection the note
-type must be updated too (Anki only auto-creates missing note types).
+4. Give the note type a new frozen id and a new name: a new field or
+   template reaches an existing Anki collection only as a new note type -
+   see "Changing Card Design" below
 
 ### Changing Card Design
 
@@ -548,6 +556,22 @@ Edit the template sources in `src/models/factory.py` (typing/choice/scramble
 qfmt, afmt and CSS fragments) or the cloze templates in
 `en_ru_cloze_model.py`; `vocab_model.py` assembles the sources into the
 unified note type. Never change the field lists of existing models.
+
+An existing Anki collection does not pick up such a change by itself:
+`ensure_models` in `src/utils/anki_connect.py` matches note types by name,
+creates only the missing ones and skips the rest, and deleting a deck does
+not delete its note type. A change of templates, template order or fields
+therefore ships as a new note type:
+
+1. Give the model a new frozen id and a new name (`MODEL_ID` / `MODEL_NAME`
+   in `vocab_model.py`, or the id and name in `en_ru_cloze_model.py`)
+2. Move the old id to `RETIRED_MODEL_IDS` in `src/models/factory.py` and the
+   old name to `LEGACY_MODEL_NAMES` in `src/utils/card_generator.py`, so the
+   mature cards of the old type still feed the known-words ledger
+3. Delete the old deck in Anki before importing the regenerated one: Anki
+   does not merge notes of the new type with the old ones, so every word
+   would appear twice
+4. Remove the emptied old note types by hand (Tools → Manage Note Types)
 
 ## Troubleshooting
 
