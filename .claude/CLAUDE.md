@@ -25,7 +25,7 @@ book text. Only `cards.example.csv` is tracked.
   - `--csv <file> --models 1,2,5|all` — non-interactive; bare CSV names are
     searched in `src/resources/`
   - `--from-md <note.md>` — build from an Obsidian markdown table
-    (models 1, 2, 5 only; mutually exclusive with `--csv`)
+    (models 1, 2, 5, 6 only, `all` maps to these; mutually exclusive with `--csv`)
   - `--validate` — check the input and exit; `--offline` — cached media only;
     `--include-known` — ignore the known-words ledger
   - `--push` — send cards into a running Anki via AnkiConnect instead of
